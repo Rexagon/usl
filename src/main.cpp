@@ -1,34 +1,79 @@
+#include <fstream>
 #include <iostream>
+
+#include "Lexer.hpp"
+
+struct Arguments final
+{
+	Arguments(const int argc, char** argv)
+	{
+		for (auto i = 1; i < argc; ++i) {
+			const std::string_view arg = argv[i];
+
+			if (arg == "-l") {
+				showLexerOutput = true;
+			}
+			else if (arg == "-h") {
+				showHelpMessage = true;
+			}
+			else if (i == 1) {
+				filename = arg;
+			}
+			else {
+				showHelpMessage = true;
+			}
+		}
+	}
+
+	std::string filename = "";
+	bool showLexerOutput = false;
+	bool showHelpMessage = false;
+};
 
 void printHelp(int argc, char** argv)
 {
-    std::cout 
-        << "USL - useless scripting language." << std::endl << std::endl
-        << "Usage:" << std::endl
-        << "\t" << "usl <file> [option]..." << std::endl << std::endl
-        << "Options:" << std::endl
-        << "\t" << "-f <filename>\tExecute specified file" << std::endl
-        << "\t" << "-h\t\tShow this screen" << std::endl
-        << std::endl;
+    std::cout << 
+		"USL - useless scripting language.\n\n"
+        "Usage:\n"
+		"\t"	"usl [<file>] [option]...\n\n"
+        "Options:\n"
+        "\t"	"-l\tShow lexer output\n"
+        "\t"	"-h\tShow this message\n";
 }
 
-int main(int argc, char** argv)
+int main(const int argc, char** argv)
 {
-    if (argc <= 1) {
+	const Arguments arguments(argc, argv);
+
+    if (arguments.showHelpMessage || argc <= 1) {
         printHelp(argc, argv);
         return 0;
     }
 
-    for (int i = 1; i < argc; ++i) {
-		std::string_view arg = argv[i];
+	std::ifstream file(arguments.filename);
+	if (!file.is_open()) {
+		std::cerr << "Unable to open file: " << arguments.filename << std::endl;
+		return 1;
+	}
 
-		if (arg == "-f" && ++i < argc) {
-			
-		}
-		else {
-			printHelp(argc, argv);
-		}
-    }
+	std::string text;
+
+	file.seekg(0, std::ios::end);
+	text.reserve(file.tellg());
+	file.seekg(0, std::ios::beg);
+
+	text.assign(
+		std::istreambuf_iterator<char>(file),
+		std::istreambuf_iterator<char>());
+
+	try {
+		app::Lexer lexer;
+		lexer.run(text);
+	}
+	catch (const std::runtime_error& e) {
+		std::cerr << e.what() << std::endl;
+		return 1;
+	}
     
     return 0;
 }

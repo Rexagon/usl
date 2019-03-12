@@ -1,0 +1,8 @@
+let test = 123;
+let hello = (test + 10) / 0.5;
+while (test != 0) {
+	if (hello > 100) {
+		hello = 100;
+	}
+	--test;
+}
