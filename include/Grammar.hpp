@@ -50,6 +50,8 @@ namespace app
 
 		Semicolon,
 
+		CommentSingleLine,
+
 		Invalid, // also used as count
 	};
 
@@ -102,6 +104,8 @@ namespace app
 			(TokenType::BracketClose,		std::regex{"^\\]"}),
 
 			(TokenType::Semicolon,			std::regex{"^;"}),
+
+			(TokenType::CommentSingleLine,	std::regex{"^//[^\\n]*(?:\\n)?"})
 		};
 
 		return regexes;

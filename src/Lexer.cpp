@@ -9,9 +9,9 @@ app::Lexer::Lexer() :
 {
 }
 
-void app::Lexer::run(std::string_view text)
+std::vector<app::Token> app::Lexer::run(std::string_view text) const
 {
-	//TODO: return parsed tokens
+	std::vector<Token> result;
 
 	RegexMask invalidExpressions;
 
@@ -39,8 +39,7 @@ void app::Lexer::run(std::string_view text)
 				}
 
 				if (tokenType != TokenType::Invalid) {
-					const std::string token{ Position::toString(begin, end) };
-					printf("{ token: \"%s\",\n  type: %d }\n\n", token.c_str(), tokenType);
+					result.emplace_back(Token{ Position::toString(begin, end), tokenType});
 				}
 
 				invalidExpressions.reset();
@@ -52,4 +51,6 @@ void app::Lexer::run(std::string_view text)
 		invalidExpressions = nextInvalidExpressions;
 		++end;
 	}
+
+	return result;
 }

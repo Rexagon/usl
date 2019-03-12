@@ -3,7 +3,7 @@ function test_function(arg) {
 }
 
 let test_number = 123;
-test_number = (test_number + 10) / 0.5;
+test_number = (test_number + 10) / 0.5; // test asd qweqwe ert
 
 let i = 10;
 while (i != 0) {

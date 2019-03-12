@@ -43,6 +43,7 @@ void printHelp(int argc, char** argv)
 
 int main(const int argc, char** argv)
 {
+	// Handle console arguments
 	const Arguments arguments(argc, argv);
 
     if (arguments.showHelpMessage || argc <= 1) {
@@ -56,6 +57,7 @@ int main(const int argc, char** argv)
 		return 1;
 	}
 
+	// Read program text
 	std::string text;
 
 	file.seekg(0, std::ios::end);
@@ -67,8 +69,17 @@ int main(const int argc, char** argv)
 		std::istreambuf_iterator<char>());
 
 	try {
+		// Generate tokens
 		app::Lexer lexer;
-		lexer.run(text);
+		const auto& tokens = lexer.run(text);
+
+		if (arguments.showLexerOutput) {
+			for (const auto& token : tokens) {
+				std::cout << "{ token: \"" << token.text << 
+					"\",\n  type: " << static_cast<size_t>(token.type) << 
+					" }\n\n";
+			}
+		}
 	}
 	catch (const std::runtime_error& e) {
 		std::cerr << e.what() << std::endl;

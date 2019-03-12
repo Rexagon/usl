@@ -4,12 +4,18 @@
 
 namespace app
 {
+	struct Token final
+	{
+		std::string_view text;
+		TokenType type;
+	};
+
 	class Lexer final
 	{
 	public:
 		Lexer();
 
-		void run(std::string_view text);
+		std::vector<Token> run(std::string_view text) const;
 
 	private:
 		const RegexArray& m_regexes;
