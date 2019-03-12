@@ -12,14 +12,13 @@ app::Lexer::Lexer() :
 void app::Lexer::run(std::string_view text)
 {
 	//TODO: return parsed tokens
-	//TODO: fix last token parsing
 
 	RegexMask invalidExpressions;
 
 	Position begin{ &*text.begin(), &*text.end() };
 	Position end = begin;
 
-	while ((end + 1).hasMore()) {
+	while (end.hasMore()) {
 		const std::string currentToken{ Position::toString(begin, end + 1) };
 
 		RegexMask nextInvalidExpressions;
