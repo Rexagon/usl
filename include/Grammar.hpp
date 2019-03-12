@@ -16,6 +16,7 @@ namespace app
 		KeywordBreak,
 		KeywordContinue,
 		KeywordFunction,
+		KeywordReturn,
 
 		Identifier,
 		String,
@@ -68,9 +69,10 @@ namespace app
 			(TokenType::KeywordBreak,		std::regex{"^break"}),
 			(TokenType::KeywordContinue,	std::regex{"^continue"}),
 			(TokenType::KeywordFunction,	std::regex{"^function"}),
+			(TokenType::KeywordReturn,		std::regex{"^return"}),
 
 			(TokenType::Identifier,			std::regex{"^[a-zA-Z_]+"}),
-			(TokenType::String,				std::regex{"^\"(?:\\\\.|[^\"])*\""}),
+			(TokenType::String,				std::regex{"^\"(?:\\\\.|[^\"])*\"?"}),
 			(TokenType::Number,				std::regex{"^-?[0-9]+\\.?[0-9]*"}),
 
 			(TokenType::OperatorAssignment, std::regex{"^="}),

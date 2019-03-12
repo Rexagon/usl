@@ -1,8 +1,14 @@
-let test = 123;
-let hello = (test + 10) / 0.5;
-while (test != 0) {
-	if (hello > 100) {
-		hello = 100;
+function test_function(arg) {
+	return "hello world with spaces and strings!";
+}
+
+let test_number = 123;
+test_number = (test_number + 10) / 0.5;
+
+let i = 10;
+while (i != 0) {
+	if (test_number > 100) {
+		test_number = test_number * 10;
 	}
-	--test;
+	--i;
 }
