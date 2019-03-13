@@ -12,3 +12,10 @@ while (i != 0) {
 	}
 	--i;
 }
+
+/* 
+Multi line comments
+And it works
+*/
+
+let test_after;
