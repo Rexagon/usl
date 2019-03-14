@@ -32,7 +32,8 @@ else_beanch = KW_ELSE BR_O statement* BR_C
 
 variable_declaration = KW_LET ID [OP_ASSIGN expression]
 
-expression = logical_or_expression
+expression = logical_or_expression |
+             (unary_expression OP_ASSIGN expression)
 
 logical_or_expression = logical_and_expression |
                         (logical_or_expression OP_OR logical_and_expression)
