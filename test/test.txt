@@ -1,4 +1,4 @@
-function test_function(arg) {
+function test_function(first_arg, second_arg) {
 	return "hello world with spaces and strings!";
 }
 
@@ -18,4 +18,4 @@ Multi line comments
 And it works
 */
 
-let test_after;
+let test_after = test_function(test_number, 1);
