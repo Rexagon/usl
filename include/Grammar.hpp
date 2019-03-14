@@ -22,7 +22,6 @@ namespace app
 		String,
 		Number,
 
-		OperatorComma,
 		OperatorAssignment,
 		OperatorOr,
 		OperatorAnd,
@@ -49,6 +48,7 @@ namespace app
 		BracketOpen,
 		BracketClose,
 
+		Comma,
 		Semicolon,
 
 		CommentSingleLine,
@@ -79,7 +79,6 @@ namespace app
 			(TokenType::String,				std::regex{"^\"(?:\\\\.|[^\"])*\"?"}),
 			(TokenType::Number,				std::regex{"^-?[0-9]+\\.?[0-9]*"}),
 
-			(TokenType::OperatorComma,		std::regex{"^,"}),
 			(TokenType::OperatorAssignment, std::regex{"^="}),
 			(TokenType::OperatorOr,			std::regex{"^\\|\\|"}),
 			(TokenType::OperatorAnd,		std::regex{"^&&"}),
@@ -106,6 +105,7 @@ namespace app
 			(TokenType::BracketOpen,		std::regex{"^\\["}),
 			(TokenType::BracketClose,		std::regex{"^\\]"}),
 
+			(TokenType::Comma,				std::regex{"^,"}),
 			(TokenType::Semicolon,			std::regex{"^;"}),
 
 			(TokenType::CommentSingleLine,	std::regex{"^//[^\\n]*(?:\\n)?"}),
