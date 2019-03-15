@@ -4,13 +4,10 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 {
 	auto state = ParserState{ tokens.begin(), tokens };
 
-	const auto primaryExpression = std::make_shared<Term>(
-		Term(TokenType::Identifier) || 
-		Term(TokenType::Number) ||
-		Term(TokenType::String));
+	auto primaryExpression =
+		Term(TokenType::Identifier) >> Term(TokenType::Number);
 
-	*primaryExpression = *primaryExpression ||
-		Term(TokenType::ParenthesisOpen) && *primaryExpression && Term(TokenType::ParenthesisClose);
+	primaryExpression = +primaryExpression;
 
-	printf("Result: %d\n", (*primaryExpression)(state));
+	printf("Result: %d\n", primaryExpression(state));
 }

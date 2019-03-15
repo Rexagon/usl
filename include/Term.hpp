@@ -18,48 +18,56 @@ namespace app
 
 	class Term final : std::enable_shared_from_this<Term>
 	{
-		enum class BooleanType
+		enum class LogicalOp
 		{
 			Or,
 			And,
 		};
 
-		using TermPtr = std::shared_ptr<Term const>;
+		struct Data;
 
-		using BooleanData = std::tuple<TermPtr, TermPtr, BooleanType>;
-		using SequenceData = std::pair<TermPtr, size_t>;
+		using DataPtr = std::shared_ptr<Data>;
+
+		using BooleanData = std::tuple<DataPtr, DataPtr, LogicalOp>;
+		using SequenceData = std::pair<DataPtr, size_t>;
+
+		struct Data final
+		{
+			explicit Data(const TokenType type) 
+				: data(type) 
+			{}
+
+			Data(const DataPtr& l, const DataPtr& r, LogicalOp op) 
+				: data(std::tuple{ l, r, op}) 
+			{}
+
+			Data(const DataPtr& c, size_t n) 
+				: data(std::pair{c, n}) 
+			{}
+
+			bool operator()(ParserState& state) const;
+
+			std::variant<TokenType, BooleanData, SequenceData> data;
+		};
 
 	public:
 		Term() = default;
-		Term(const Term& term);
-
 		explicit Term(TokenType type);
-		Term(TermPtr, TermPtr, BooleanType op);
-		Term(TermPtr, size_t n);
+		Term(const Term& l, const Term& r, LogicalOp op);
+		Term(const Term& c, size_t n);
 
 		bool operator()(ParserState& state) const;
 
+		Term operator|(const Term& other) const;
+		Term operator>>(const Term& other) const;
 		Term operator++() const;
 		Term operator+() const;
 
-		Term& operator=(Term&& other) noexcept;
-
-		friend Term operator||(Term&& left, Term&& right);
-		friend Term operator||(const Term& left, Term&& right);
-		friend Term operator||(Term&& left, const Term& right);
-		friend Term operator||(const Term& left, const Term& right);
-
-		friend Term operator&&(Term&& left, Term&& right);
-		friend Term operator&&(const Term& left, Term&& right);
-		friend Term operator&&(Term&& left, const Term& right);
-		friend Term operator&&(const Term& left, const Term& right);
-
 	private:
-
 		static bool checkTokenType(ParserState& state, const TokenType& type);
 		static bool computeBoolean(ParserState& state, const BooleanData& boolean);
 		static bool computeSequence(ParserState& state, const SequenceData& sequence);
 
-		std::optional<std::variant<TokenType, BooleanData, SequenceData>> m_data;
+		DataPtr m_data{nullptr};
 	};
 }
