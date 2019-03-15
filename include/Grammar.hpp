@@ -62,6 +62,8 @@ namespace app
 	using RegexArray = std::array<std::regex, TOKEN_COUNT>;
 	using RegexMask = std::bitset<TOKEN_COUNT>;
 
+	using Token = std::pair<TokenType, std::string_view>;
+
 	static const RegexArray& buildRegexes() noexcept
 	{
 		static RegexArray regexes {

@@ -46,7 +46,7 @@ std::vector<app::Token> app::Lexer::run(std::string_view text) const
 			}
 
 			if (tokenType != TokenType::Invalid) {
-				result.emplace_back(Token{ Position::toString(begin, end), tokenType});
+				result.emplace_back(tokenType, Position::toString(begin, end));
 			}
 
 			invalidExpressions.reset();
