@@ -1,0 +1,65 @@
+#pragma once
+
+#include <variant>
+
+#include "LexerGrammar.hpp"
+
+namespace app
+{
+	struct Term;
+	struct NonTerm;
+	struct RuleSet;
+
+	class EarleyItem;
+
+	using RuleVariant = std::variant<Term, NonTerm>;
+
+	class Rules final
+	{
+	public:
+		Rules() = default;
+		Rules(const Term& t);
+		Rules(const NonTerm& t);
+		Rules(const RuleSet& t);
+
+		void setName(const std::string& name);
+
+		std::vector<EarleyItem> generateEarleyItems(size_t begin) const;
+
+		Rules operator|(const RuleSet& r) const;
+		Rules operator|(const RuleVariant& r) const;
+		friend Rules operator|(const RuleSet& l, const RuleSet& r);
+		friend Rules operator|(const RuleSet& l, const RuleVariant& r);
+
+	private:
+		std::string m_name;
+		std::vector<RuleSet> m_sets;
+	};
+
+	struct Term final
+	{
+		bool operator==(const Term& other) const;
+
+		TokenType type;
+	};
+
+	struct NonTerm final
+	{
+		bool operator==(const NonTerm& other) const;
+
+		std::string name;
+	};
+
+	struct RuleSet final
+	{
+		RuleSet() = default;
+
+		bool operator==(const RuleSet& other) const;
+
+		std::vector<RuleVariant> rules;
+	};
+
+	RuleSet operator>>(const RuleSet& l, const RuleVariant& r);
+	RuleSet operator>>(const RuleVariant& l, const RuleSet& r);
+	RuleSet operator>>(const RuleVariant& l, const RuleVariant& r);
+}

@@ -1,29 +1,27 @@
 #pragma once
 
-#include <unordered_map>
-
-#include "Rule.hpp"
+#include "EarleyItem.hpp"
+#include "ParserGrammar.hpp"
 
 namespace app
 {
 	class Parser final
 	{
-		using EarleySet = std::vector<EarleyState>;
-		using StateGroups = std::vector<EarleySet>;
-		using Grammar = std::unordered_map<std::string, RuleCases>;
+		using StateSet = std::vector<EarleyItem>;
+		using StateSets = std::vector<StateSet>;
+
 	public:
 		Parser();
 
 		void parse(const std::vector<Token>& tokens);
 
 	private:
-		static void scan(StateGroups& s, size_t i, size_t j, const Token& token);
-		static void predict(StateGroups& s, size_t i, size_t j, const Grammar& g);
-		static void complete(StateGroups& s, size_t i, size_t j);
+		static void scan(StateSets& s, size_t i, size_t j, const Token& token);
+		static void predict(StateSets& s, size_t i, size_t j, const Grammar& g);
+		static void complete(StateSets& s, size_t i, size_t j);
 
-		static void tryEmplace(EarleySet& earleySet, const EarleyState& state);
+		static void tryEmplace(StateSet& stateSet, const EarleyItem& item);
 
-		Grammar m_grammar;
-		std::string m_startRule = "sum";
+		const Grammar& m_grammar;
 	};
 }

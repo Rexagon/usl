@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Grammar.hpp"
+#include "LexerGrammar.hpp"
 
 namespace app
 {
