@@ -14,7 +14,7 @@ set(SOURCES
     "${SOURCE_DIR}/main.cpp"
 	"${SOURCE_DIR}/Parser.cpp"
 	"${SOURCE_DIR}/Position.cpp"
-	"${SOURCE_DIR}/Term.cpp"
+	"${SOURCE_DIR}/Rule.cpp"
 )
 
 add_executable(usl ${SOURCES})
