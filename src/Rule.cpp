@@ -21,13 +21,42 @@ bool app::RuleSet::operator!=(const RuleSet& other) const
 }
 
 app::EarleyState::EarleyState(const EarleyState& state, size_t n) :
-	m_item(state.m_item), m_name(state.m_name), m_origin(state.m_origin), m_next(state.m_next + n)
+	m_item(state.m_item), m_name(state.m_name), m_origin(state.m_origin), 
+	m_next(std::min(state.m_next + n, state.m_item.rules.size()))
 {
 }
 
 app::EarleyState::EarleyState(std::string_view name, const RuleSet& set, const size_t origin, const size_t next) :
 	m_item(set), m_name(name), m_origin(origin), m_next(next)
 {
+}
+
+void app::EarleyState::print() const
+{
+	printf("(%zu) %s -> ", m_origin, std::string{ m_name }.c_str());
+
+	for (size_t i = 0; i < m_item.rules.size(); ++i) {
+		if (i == m_next) {
+			printf(". ");
+		}
+
+		std::visit([](auto && arg) {
+			using T = std::decay_t<decltype(arg)>;
+
+			if constexpr (std::is_same_v<T, Term>) {
+				printf("Term(%d) ", arg.type);
+			}
+			else {
+				printf("%s ", arg.name.c_str());
+			}
+		}, m_item.rules[i]);
+	}
+
+	if (m_item.rules.empty() || m_next >= m_item.rules.size()) {
+		printf(". ");
+	}
+
+	printf("\n");
 }
 
 app::EarleyState::Type app::EarleyState::getNextType() const
@@ -93,11 +122,6 @@ bool app::EarleyState::operator==(const EarleyState& other) const
 	return m_item == other.m_item && m_origin == other.m_origin && m_next == other.m_next;
 }
 
-bool app::EarleyState::operator!=(const EarleyState& other) const
-{
-	return !(*this == other);
-}
-
 app::RuleCases::RuleCases(const Term& t) :
 	m_sets({RuleSet{{t}}})
 {
@@ -118,13 +142,13 @@ void app::RuleCases::setName(const std::string& name)
 	m_name = name;
 }
 
-std::vector<app::EarleyState> app::RuleCases::generateStates(const size_t begin, size_t next) const
+std::vector<app::EarleyState> app::RuleCases::generateStates(const size_t begin) const
 {
 	std::vector<EarleyState> result;
 	result.reserve(m_sets.size());
 
 	for (const auto& set : m_sets) {
-		result.emplace_back(m_name, set, begin, next);
+		result.emplace_back(m_name, set, begin, 0);
 	}
 	return result;
 }

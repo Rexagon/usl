@@ -42,8 +42,10 @@ namespace app
 			Null,
 		};
 
-		EarleyState(const EarleyState& state, size_t n = 1);
+		EarleyState(const EarleyState& state, size_t n);
 		EarleyState(std::string_view name, const RuleSet& set, size_t origin, size_t next = 0);
+
+		void print() const;
 
 		Type getNextType() const;
 		const Term* getNextTerm() const;
@@ -57,7 +59,6 @@ namespace app
 		size_t getEndPosition() const;
 
 		bool operator==(const EarleyState& other) const;
-		bool operator!=(const EarleyState& other) const;
 
 	private:
 		const RuleSet& m_item;
@@ -77,7 +78,7 @@ namespace app
 
 		void setName(const std::string& name);
 
-		std::vector<EarleyState> generateStates(size_t begin, size_t next = 0) const;
+		std::vector<EarleyState> generateStates(size_t begin) const;
 
 		RuleCases operator|(const RuleSet& r) const;
 		RuleCases operator|(const RuleVariant& r) const;

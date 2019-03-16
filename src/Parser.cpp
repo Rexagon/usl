@@ -16,7 +16,7 @@ app::Parser::Parser()
 		NonTerm{ "factor" };
 
 	m_grammar["factor"] =
-		Term{ TokenType::ParenthesisOpen } >> NonTerm{ "number" } >> Term{ TokenType::ParenthesisClose } |
+		Term{ TokenType::ParenthesisOpen } >> NonTerm{ "sum" } >> Term{ TokenType::ParenthesisClose } |
 		NonTerm{ "number" };
 
 	m_grammar["number"] =
@@ -39,47 +39,47 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 
 	stateGroups.emplace_back(m_grammar["sum"].generateStates(0));
 
-	for (size_t i = 0; i < tokens.size(); ++i) {
+	for (size_t i = 0; i < tokens.size() && i < stateGroups.size(); ++i) {
 		printf("==%zu==\n", i);
 
 		for (size_t j = 0; j < stateGroups[i].size(); ++j) {
 			const auto& item = stateGroups[i][j];
 
-			printf("%zu: %s ->", j, std::string(item.getName()).c_str());
-
 			switch (item.getNextType()) {
 			case EarleyState::Type::Term:
-				printf("term %d\n", item.getNextTerm()->type);
 				scan(stateGroups, i, j, tokens[i]);
 				break;
 
 			case EarleyState::Type::NonTerm:
-				printf("nonterm %s\n", item.getNextNonTerm()->name.c_str());
 				predict(stateGroups, i, j, m_grammar);
 				break;
 
 			case EarleyState::Type::Null:
-				printf("null\n");
 				complete(stateGroups, i, j);
 				break;
 
 			default: 
 				break;
 			}
+
+			item.print();
 		}
 	}
 }
 
 void app::Parser::scan(StateGroups& s, size_t i, size_t j, const Token& token)
 {
+	printf("scan %d\t ", token.first);
+
 	const auto& item = s[i][j];
 
 	const auto* nextSymbol = item.getNextTerm();
+
 	if (nextSymbol == nullptr || nextSymbol->type != token.first) {
 		return;
 	}
 
-	if (i >= s.size()) {
+	if (i + 1 >= s.size()) {
 		s.emplace_back();
 	}
 
@@ -88,6 +88,8 @@ void app::Parser::scan(StateGroups& s, size_t i, size_t j, const Token& token)
 
 void app::Parser::predict(StateGroups& s, size_t i, size_t j, const Grammar& g)
 {
+	printf("predict\t ");
+
 	const auto& item = s[i][j];
 
 	const auto* nextSymbol = item.getNextNonTerm();
@@ -95,7 +97,7 @@ void app::Parser::predict(StateGroups& s, size_t i, size_t j, const Grammar& g)
 	const auto it = g.find(nextSymbol->name);
 	assert(it != m_grammar.end());
 
-	const auto states = it->second.generateStates(i, 1);
+	const auto states = it->second.generateStates(i);
 	for (const auto& state : states) {
 		tryEmplace(s[i], state);
 	}
@@ -103,12 +105,15 @@ void app::Parser::predict(StateGroups& s, size_t i, size_t j, const Grammar& g)
 
 void app::Parser::complete(StateGroups& s, const size_t i, const size_t j)
 {
+	printf("complete ");
+
 	const auto& item = s[i][j];
 
-	for (const auto& state : s[i]) {
+	for (const auto& state : s[item.getOrigin()]) {
 		const auto* nextSymbol = state.getNextNonTerm();
+
 		if (nextSymbol && nextSymbol->name == item.getName()) {
-			tryEmplace(s[i], EarleyState(item, 1));
+			tryEmplace(s[i], EarleyState(state, 1));
 		}
 	}
 }
