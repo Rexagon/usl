@@ -24,5 +24,6 @@ namespace app
 		static void tryEmplace(EarleySet& earleySet, const EarleyState& state);
 
 		Grammar m_grammar;
+		std::string m_startRule = "sum";
 	};
 }

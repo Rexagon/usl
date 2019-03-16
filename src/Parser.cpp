@@ -33,13 +33,13 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 		return;
 	}
 
-	// Start Earley parsing
+	// Fill parser states
 	StateGroups stateGroups;
 	stateGroups.reserve(tokens.size());
 
-	stateGroups.emplace_back(m_grammar["sum"].generateStates(0));
+	stateGroups.emplace_back(m_grammar[m_startRule].generateStates(0));
 
-	for (size_t i = 0; i < tokens.size() && i < stateGroups.size(); ++i) {
+	for (size_t i = 0; i < stateGroups.size(); ++i) {
 		printf("==%zu==\n", i);
 
 		for (size_t j = 0; j < stateGroups[i].size(); ++j) {
@@ -47,7 +47,9 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 
 			switch (item.getNextType()) {
 			case EarleyState::Type::Term:
-				scan(stateGroups, i, j, tokens[i]);
+				if (i < tokens.size()) {
+					scan(stateGroups, i, j, tokens[i]);
+				}
 				break;
 
 			case EarleyState::Type::NonTerm:
@@ -64,6 +66,36 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 
 			item.print();
 		}
+	}
+
+	for (size_t i = 0; i < stateGroups.size(); ++i) {
+		printf("==%zu==\n", i);
+
+		for (const auto& item : stateGroups[i]) {
+			item.print();
+		}
+
+		printf("\n");
+	}
+
+	// Validate result
+	if (stateGroups.size() != tokens.size() + 1) {
+		throw std::runtime_error("Unexpected end of stream");
+	}
+
+	const EarleyState* finalState = nullptr;
+	for (const auto& item : stateGroups.back()) {
+		if (item.getNextType() == EarleyState::Type::Null &&
+			item.getOrigin() == 0 &&
+			item.getName() == m_startRule) 
+		{
+			finalState = &item;
+		}
+	}
+
+	if (finalState != nullptr) {
+		printf("Input is valid\n");
+		finalState->print();
 	}
 }
 
@@ -120,11 +152,15 @@ void app::Parser::complete(StateGroups& s, const size_t i, const size_t j)
 
 void app::Parser::tryEmplace(EarleySet& earleySet, const EarleyState& state)
 {
+	printf("try ");
+
 	for (const auto& item : earleySet) {
 		if (item == state) {
 			return;
 		}
 	}
+
+	printf("emplace ");
 
 	earleySet.emplace_back(state);
 }

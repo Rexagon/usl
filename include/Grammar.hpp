@@ -79,7 +79,7 @@ namespace app
 
 			(TokenType::Identifier,			std::regex{"^[a-zA-Z_]+"}),
 			(TokenType::String,				std::regex{"^\"(?:\\\\.|[^\"])*\"?"}),
-			(TokenType::Number,				std::regex{"^-?[0-9]+\\.?[0-9]*"}),
+			(TokenType::Number,				std::regex{"^[0-9]+\\.?[0-9]*"}),
 
 			(TokenType::OperatorAssignment, std::regex{"^="}),
 			(TokenType::OperatorOr,			std::regex{"^\\|\\|"}),
