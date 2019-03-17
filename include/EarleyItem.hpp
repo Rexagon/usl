@@ -21,6 +21,7 @@ namespace app
 		void print() const;
 
 		bool isEmpty() const;
+		bool isComplete() const;
 
 		NextType getNextType() const;
 		const Term* getNextTerm() const;

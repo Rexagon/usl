@@ -46,6 +46,11 @@ bool app::EarleyItem::isEmpty() const
 	return m_set.rules.empty();
 }
 
+bool app::EarleyItem::isComplete() const
+{
+	return m_set.rules.size() == m_next;
+}
+
 app::EarleyItem::NextType app::EarleyItem::getNextType() const
 {
 	auto result = NextType::Null;

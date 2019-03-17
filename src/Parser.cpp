@@ -1,5 +1,8 @@
 #include "Parser.hpp"
 
+#include <stack>
+#include <functional>
+
 app::Parser::Parser() :
 	m_grammar(ParserGrammar::create())
 {
@@ -7,10 +10,6 @@ app::Parser::Parser() :
 
 void app::Parser::parse(const std::vector<Token>& tokens)
 {
-	if (tokens.empty()) {
-		//return;
-	}
-
 	// Fill parser states
 	m_stateSets.clear();
 	m_stateSets.reserve(tokens.size());
@@ -42,16 +41,6 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 		}
 	}
 
-	for (size_t i = 0; i < m_stateSets.size(); ++i) {
-		printf("==%zu==\n", i);
-
-		for (const auto& item : m_stateSets[i]) {
-			item.print();
-		}
-
-		printf("\n");
-	}
-
 	// Validate result
 	if (m_stateSets.size() != tokens.size() + 1) {
 		throw std::runtime_error("Unexpected end of stream");
@@ -67,10 +56,105 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 		}
 	}
 
-	if (finalItem != nullptr) {
-		printf("Input is valid\n");
-		finalItem->print();
+	if (finalItem == nullptr) {
+		throw std::runtime_error("Input is invalid");
 	}
+
+	// Prepare for generating AST
+	using CompletedItem = std::pair<const EarleyItem*, size_t>;
+
+	std::vector<std::list<CompletedItem>> completedItems;
+	completedItems.resize(m_stateSets.size());
+
+	for (size_t i = 0; i < m_stateSets.size(); ++i) {
+		for (const auto& item : m_stateSets[i]) {
+			if (item.isComplete() && item.getOrigin() != i) {
+				completedItems[item.getOrigin()].emplace_front(&item, i);
+			}
+		}
+	}
+
+	for (size_t i = 0; i < completedItems.size(); ++i) {
+		printf("==%zu==\n", i);
+
+		for (const auto& item : completedItems[i]) {
+			printf("(%zu) ", item.second);
+			item.first->print();
+		}
+
+		printf("\n");
+	}
+
+	// Generate AST
+	struct SyntaxNode
+	{
+		CompletedItem value {nullptr, 0};
+		const Token* token = nullptr;
+
+		std::list<std::unique_ptr<SyntaxNode>> children;
+	};
+
+	printf("\n%zu\n", tokens.size());
+
+	SyntaxNode root;
+
+	std::stack<SyntaxNode*> stack;
+	stack.push(&root);
+
+	for (size_t i = 0; i < tokens.size(); ++i) {
+		for (const auto& item : completedItems[i]) {
+			auto node = std::make_unique<SyntaxNode>();
+			node->value = item;
+
+			auto nodePtr = node.get();
+			stack.top()->children.emplace_back(std::move(node));
+
+			stack.push(nodePtr);
+		}
+
+		while (stack.top()->value.first != nullptr && 
+			i >= stack.top()->value.second) 
+		{
+			stack.pop();
+		}
+
+		auto leaf = std::make_unique<SyntaxNode>();
+		leaf->token = &tokens[i];
+		stack.top()->children.emplace_back(std::move(leaf));
+	}
+
+	std::unordered_set<size_t> depthMask;
+	std::function<void(const SyntaxNode*, size_t)> printTree;
+	printTree = [&printTree, &depthMask](const SyntaxNode * node, const size_t depth) {
+		for (size_t i = 0; i < depth; ++i) {
+			if (i == depth - 1) {
+				printf("*--");
+			}
+			else {
+				printf("%s  ", depthMask.find(i) == depthMask.end() ? " " : "|");
+			}
+		}
+
+		if (node->value.first != nullptr) {
+			node->value.first->print();
+		}
+		else if(node->token) {
+			printf("Term(%d)\n", node->token->first);
+		}
+
+		if (!node->children.empty()) {
+			depthMask.emplace(depth);
+
+			for (auto it = node->children.begin(); it != node->children.end(); ++it) {
+				if (*it == node->children.back()) {
+					depthMask.erase(depth);
+				}
+				printTree(it->get(), depth + 1);
+			}
+		}
+	};
+
+	printTree(&root, 0);
 }
 
 void app::Parser::scan(const size_t i, const size_t j, const Token& token)

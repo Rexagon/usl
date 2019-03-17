@@ -40,7 +40,7 @@ app::ParserGrammar::ParserGrammar()
 		Term{ TokenType::BraceOpen } >> NonTerm{ "block_statement" } >> Term{ TokenType::BraceClose };
 
 	m_rules["block_statement"] =
-		NonTerm{ "statement" } |
+		RuleSet{} |
 		NonTerm{ "statement" } >> NonTerm{"block_statement"};
 
 	m_rules["condition"] =
