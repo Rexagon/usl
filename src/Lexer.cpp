@@ -45,7 +45,10 @@ std::vector<app::Token> app::Lexer::run(std::string_view text) const
 				}
 			}
 
-			if (tokenType != TokenType::Invalid) {
+			if (tokenType != TokenType::Invalid &&
+				tokenType != TokenType::CommentSingleLine &&
+				tokenType != TokenType::CommentMultiLine) 
+			{
 				result.emplace_back(tokenType, Position::toString(begin, end));
 			}
 

@@ -27,6 +27,8 @@ namespace app
 
 		std::vector<EarleyItem> generateEarleyItems(size_t begin) const;
 
+		const std::vector<RuleSet>& getRuleSets() const;
+
 		Rules operator|(const RuleSet& r) const;
 		Rules operator|(const RuleVariant& r) const;
 		friend Rules operator|(const RuleSet& l, const RuleSet& r);

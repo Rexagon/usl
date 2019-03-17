@@ -38,6 +38,11 @@ std::vector<app::EarleyItem> app::Rules::generateEarleyItems(const size_t begin)
 	return result;
 }
 
+const std::vector<app::RuleSet>& app::Rules::getRuleSets() const
+{
+	return m_sets;
+}
+
 app::Rules app::Rules::operator|(const RuleSet& r) const
 {
 	auto result = *this;

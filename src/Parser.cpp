@@ -8,7 +8,7 @@ app::Parser::Parser() :
 void app::Parser::parse(const std::vector<Token>& tokens)
 {
 	if (tokens.empty()) {
-		return;
+		//return;
 	}
 
 	// Fill parser states

@@ -7,18 +7,33 @@ const std::string app::ParserGrammar::STARTING_RULE = "program";
 app::ParserGrammar::ParserGrammar()
 {
 	m_rules[STARTING_RULE] =
-		NonTerm{ "general_statement" } |
+		RuleSet{} |
 		NonTerm{ "general_statement" } >> NonTerm{ STARTING_RULE };
 
-	//TODO: add function declaration
 	m_rules["general_statement"] =
-		NonTerm{ "statement" };
+		NonTerm{ "statement" } |
+		NonTerm{ "function_declaration" };
 
 	m_rules["statement"] =
 		NonTerm{ "while_loop" } |
 		NonTerm{ "branch" } |
 		NonTerm{ "variable_declaration" } >> Term{ TokenType::Semicolon } |
-		NonTerm{ "expression" } >> Term{ TokenType::Semicolon };
+		NonTerm{ "expression" } >> Term{ TokenType::Semicolon } |
+		Term{ TokenType::KeywordReturn } >> NonTerm{ "expression" } >> Term{ TokenType::Semicolon } |
+		Term{ TokenType::KeywordBreak } |
+		Term{ TokenType::KeywordContinue };
+
+	m_rules["function_declaration"] =
+		Term{ TokenType::KeywordFunction } >> Term{TokenType::Identifier} >> Term{ TokenType::ParenthesisOpen } >> 
+			NonTerm{ "function_arguments" } >> Term{ TokenType::ParenthesisClose } >> NonTerm{ "block" };
+
+	m_rules["function_arguments"] =
+		RuleSet{} |
+		Term{ TokenType::Identifier } >> NonTerm{ "comma_function_argument" };
+
+	m_rules["comma_function_argument"] =
+		RuleSet{} |
+		Term{ TokenType::Comma } >> Term{ TokenType::Identifier } >> NonTerm{ "comma_function_argument" };
 
 	m_rules["block"] =
 		NonTerm{"statement"} |
@@ -35,11 +50,15 @@ app::ParserGrammar::ParserGrammar()
 		Term{TokenType::KeywordWhile} >> NonTerm{"condition"} >> NonTerm{ "block" };
 
 	m_rules["branch"] =
-		Term{ TokenType::KeywordIf } >> NonTerm{ "condition" } >> NonTerm{ "block" };
+		Term{ TokenType::KeywordIf } >> NonTerm{ "condition" } >> NonTerm{ "block" } |
+		Term{ TokenType::KeywordIf } >> NonTerm{ "condition" } >> NonTerm{ "block" } >> NonTerm{ "else_branch" };
 
-	//TODO: add optional assign operation
+	m_rules["else_branch"] =
+		Term{ TokenType::KeywordElse } >> NonTerm{ "block" };
+
 	m_rules["variable_declaration"] =
-		Term{ TokenType::KeywordLet } >> Term{ TokenType::Identifier };
+		Term{ TokenType::KeywordLet } >> Term{ TokenType::Identifier } |
+		Term{ TokenType::KeywordLet } >> Term{ TokenType::Identifier } >> Term{ TokenType::OperatorAssignment } >> NonTerm{ "expression" };
 
 	m_rules["expression"] =
 		NonTerm{ "logical_or_expression" } |
@@ -87,7 +106,8 @@ app::ParserGrammar::ParserGrammar()
 		NonTerm{ "primary_expression" } |
 		NonTerm{ "postfix_expression" } >> Term{ TokenType::OperatorIncrement } |
 		NonTerm{ "postfix_expression" } >> Term{ TokenType::OperatorDecrement } |
-		NonTerm{ "postfix_expression" } >> Term{ TokenType::StructureReference } >> Term{ TokenType::Identifier };
+		NonTerm{ "postfix_expression" } >> Term{ TokenType::StructureReference } >> Term{ TokenType::Identifier } |
+		NonTerm{ "postfix_expression" } >> Term{ TokenType::ParenthesisOpen } >> NonTerm{ "call_arguments" } >> Term{ TokenType::ParenthesisClose };
 
 	m_rules["primary_expression"] =
 		NonTerm{ "primary_expression" } |
@@ -95,6 +115,14 @@ app::ParserGrammar::ParserGrammar()
 		Term{ TokenType::Number } |
 		Term{ TokenType::String } |
 		Term{ TokenType::ParenthesisOpen } >> NonTerm{ "expression" } >> Term{ TokenType::ParenthesisClose };
+
+	m_rules["call_arguments"] =
+		RuleSet{} |
+		NonTerm{ "expression" } >> NonTerm{ "comma_call_argument" };
+
+	m_rules["comma_call_argument"] =
+		RuleSet{} |
+		Term{ TokenType::Comma } >> NonTerm{ "expression" } >> NonTerm{ "comma_call_argument" };
 
 	finalize();
 }
@@ -115,10 +143,15 @@ std::vector<app::EarleyItem> app::ParserGrammar::generateEarleyItems(const std::
 	return (*this)[name].generateEarleyItems(origin);
 }
 
+bool app::ParserGrammar::isNullable(const std::string& name)
+{
+	return m_nullableRules.find(name) != m_nullableRules.end();
+}
+
 const app::Rules& app::ParserGrammar::operator[](const std::string& name) const
 {
 	const auto it = m_rules.find(name);
-	assert(it != name, "unable to find rule name");
+	assert(it != name);
 	return it->second;
 }
 
@@ -127,4 +160,34 @@ void app::ParserGrammar::finalize()
 	for (auto& [name, rules] : m_rules) {
 		rules.setName(name);
 	}
+
+	while (true) {
+		const auto oldSize = m_nullableRules.size();
+
+		for (const auto& [name, rules] : m_rules) {
+			for (const auto& set : rules.getRuleSets()) {
+				auto nullable = true;
+				for (const auto& item : set.rules) {
+					const auto* nonterm = std::get_if<NonTerm>(&item);
+					if (nonterm == nullptr || !isNullable(nonterm->name)) {
+						nullable = false;
+					}
+				}
+
+				if (nullable) {
+					m_nullableRules.emplace(name);
+				}
+			}
+		}
+
+		if (m_nullableRules.size() == oldSize) {
+			break;
+		}
+	}
+
+	printf("Nullable rules: ");
+	for (const auto& nullable : m_nullableRules) {
+		printf("%s ", nullable.c_str());
+	}
+	printf("\n\n");
 }

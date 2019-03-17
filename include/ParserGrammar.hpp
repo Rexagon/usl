@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <unordered_set>
 
 #include "EarleyItem.hpp"
 
@@ -11,6 +12,8 @@ namespace app
 	public:
 		std::vector<EarleyItem> generateStartingEarleyItems() const;
 		std::vector<EarleyItem> generateEarleyItems(const std::string& name, size_t origin) const;
+
+		bool isNullable(const std::string& name);
 
 		const Rules& operator[](const std::string& name) const;
 
@@ -23,5 +26,6 @@ namespace app
 		void finalize();
 
 		std::unordered_map<std::string, Rules> m_rules;
+		std::unordered_set<std::string> m_nullableRules;
 	};
 }
