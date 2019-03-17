@@ -102,6 +102,12 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 	stack.push(&root);
 
 	for (size_t i = 0; i < tokens.size(); ++i) {
+		while (stack.top()->value.first != nullptr &&
+			i >= stack.top()->value.second)
+		{
+			stack.pop();
+		}
+
 		for (const auto& item : completedItems[i]) {
 			auto node = std::make_unique<SyntaxNode>();
 			node->value = item;
@@ -110,12 +116,6 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 			stack.top()->children.emplace_back(std::move(node));
 
 			stack.push(nodePtr);
-		}
-
-		while (stack.top()->value.first != nullptr && 
-			i >= stack.top()->value.second) 
-		{
-			stack.pop();
 		}
 
 		auto leaf = std::make_unique<SyntaxNode>();
