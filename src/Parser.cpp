@@ -1,10 +1,7 @@
 #include "Parser.hpp"
 
-#include <cassert>
-#include <unordered_map>
-
 app::Parser::Parser() :
-	m_grammar(buildGrammar())
+	m_grammar(ParserGrammar::create())
 {
 }
 
@@ -15,31 +12,28 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 	}
 
 	// Fill parser states
-	StateSets stateSets;
-	stateSets.reserve(tokens.size());
+	m_stateSets.clear();
+	m_stateSets.reserve(tokens.size());
 
-	const auto it = m_grammar.find(STARTING_RULE);
-	assert(it != m_grammar.end(), "Unable to find starting rule");
+	m_stateSets.emplace_back(m_grammar.generateStartingEarleyItems());
 
-	stateSets.emplace_back(it->second.generateEarleyItems(0));
-
-	for (size_t i = 0; i < stateSets.size(); ++i) {
-		for (size_t j = 0; j < stateSets[i].size(); ++j) {
-			const auto& item = stateSets[i][j];
+	for (size_t i = 0; i < m_stateSets.size(); ++i) {
+		for (size_t j = 0; j < m_stateSets[i].size(); ++j) {
+			const auto& item = m_stateSets[i][j];
 
 			switch (item.getNextType()) {
 			case EarleyItem::NextType::Term:
 				if (i < tokens.size()) {
-					scan(stateSets, i, j, tokens[i]);
+					scan(i, j, tokens[i]);
 				}
 				break;
 
 			case EarleyItem::NextType::NonTerm:
-				predict(stateSets, i, j, m_grammar);
+				predict(i, j, m_grammar);
 				break;
 
 			case EarleyItem::NextType::Null:
-				complete(stateSets, i, j);
+				complete(i, j);
 				break;
 
 			default: 
@@ -48,10 +42,10 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 		}
 	}
 
-	for (size_t i = 0; i < stateSets.size(); ++i) {
+	for (size_t i = 0; i < m_stateSets.size(); ++i) {
 		printf("==%zu==\n", i);
 
-		for (const auto& item : stateSets[i]) {
+		for (const auto& item : m_stateSets[i]) {
 			item.print();
 		}
 
@@ -59,15 +53,15 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 	}
 
 	// Validate result
-	if (stateSets.size() != tokens.size() + 1) {
+	if (m_stateSets.size() != tokens.size() + 1) {
 		throw std::runtime_error("Unexpected end of stream");
 	}
 
 	const EarleyItem* finalItem = nullptr;
-	for (const auto& item : stateSets.back()) {
+	for (const auto& item : m_stateSets.back()) {
 		if (item.getNextType() == EarleyItem::NextType::Null &&
 			item.getOrigin() == 0 &&
-			item.getName() == STARTING_RULE)
+			item.getName() == ParserGrammar::STARTING_RULE)
 		{
 			finalItem = &item;
 		}
@@ -79,9 +73,9 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 	}
 }
 
-void app::Parser::scan(StateSets& s, size_t i, size_t j, const Token& token)
+void app::Parser::scan(const size_t i, const size_t j, const Token& token)
 {
-	const auto& currentItem = s[i][j];
+	const auto& currentItem = m_stateSets[i][j];
 
 	const auto* nextSymbol = currentItem.getNextTerm();
 
@@ -89,37 +83,34 @@ void app::Parser::scan(StateSets& s, size_t i, size_t j, const Token& token)
 		return;
 	}
 
-	if (i + 1 >= s.size()) {
-		s.emplace_back();
+	if (i + 1 >= m_stateSets.size()) {
+		m_stateSets.emplace_back();
 	}
 
-	tryEmplace(s[i + 1], currentItem.createAdvanced(1));
+	tryEmplace(m_stateSets[i + 1], currentItem.createAdvanced(1));
 }
 
-void app::Parser::predict(StateSets& s, size_t i, size_t j, const Grammar& g)
+void app::Parser::predict(const size_t i, const size_t j, const ParserGrammar& g)
 {
-	const auto& currentItem = s[i][j];
+	const auto& currentItem = m_stateSets[i][j];
 
 	const auto* nextSymbol = currentItem.getNextNonTerm();
 
-	const auto it = g.find(nextSymbol->name);
-	assert(it != m_grammar.end());
-
-	const auto items = it->second.generateEarleyItems(i);
+	const auto items = m_grammar.generateEarleyItems(nextSymbol->name, i);
 	for (const auto& item : items) {
-		tryEmplace(s[i], item);
+		tryEmplace(m_stateSets[i], item);
 	}
 }
 
-void app::Parser::complete(StateSets& s, const size_t i, const size_t j)
+void app::Parser::complete(const size_t i, const size_t j)
 {
-	const auto& currentItem = s[i][j];
+	const auto& currentItem = m_stateSets[i][j];
 
-	for (const auto& item : s[currentItem.getOrigin()]) {
+	for (const auto& item : m_stateSets[currentItem.getOrigin()]) {
 		const auto* nextSymbol = item.getNextNonTerm();
 
 		if (nextSymbol && nextSymbol->name == currentItem.getName()) {
-			tryEmplace(s[i], item.createAdvanced(1));
+			tryEmplace(m_stateSets[i], item.createAdvanced(1));
 		}
 	}
 }

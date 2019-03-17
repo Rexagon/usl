@@ -21,6 +21,7 @@ namespace app
 		Rules(const Term& t);
 		Rules(const NonTerm& t);
 		Rules(const RuleSet& t);
+		Rules(const std::vector<RuleSet>& t);
 
 		void setName(const std::string& name);
 
@@ -58,6 +59,9 @@ namespace app
 
 		std::vector<RuleVariant> rules;
 	};
+
+	Rules operator|(const RuleVariant& l, const RuleSet& r);
+	Rules operator|(const RuleVariant& l, const RuleVariant& r);
 
 	RuleSet operator>>(const RuleSet& l, const RuleVariant& r);
 	RuleSet operator>>(const RuleVariant& l, const RuleSet& r);

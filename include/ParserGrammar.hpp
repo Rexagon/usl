@@ -2,13 +2,26 @@
 
 #include <unordered_map>
 
-#include "Rules.hpp"
+#include "EarleyItem.hpp"
 
 namespace app
 {
-	using Grammar = std::unordered_map<std::string, Rules>;
+	class ParserGrammar final
+	{
+	public:
+		std::vector<EarleyItem> generateStartingEarleyItems() const;
+		std::vector<EarleyItem> generateEarleyItems(const std::string& name, size_t origin) const;
 
-	constexpr auto STARTING_RULE = "sum";
+		const Rules& operator[](const std::string& name) const;
 
-	const Grammar& buildGrammar();
+		static const ParserGrammar& create();
+
+		static const std::string STARTING_RULE;
+
+	private:
+		ParserGrammar();
+		void finalize();
+
+		std::unordered_map<std::string, Rules> m_rules;
+	};
 }

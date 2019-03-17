@@ -1,6 +1,5 @@
 #pragma once
 
-#include "EarleyItem.hpp"
 #include "ParserGrammar.hpp"
 
 namespace app
@@ -16,12 +15,13 @@ namespace app
 		void parse(const std::vector<Token>& tokens);
 
 	private:
-		static void scan(StateSets& s, size_t i, size_t j, const Token& token);
-		static void predict(StateSets& s, size_t i, size_t j, const Grammar& g);
-		static void complete(StateSets& s, size_t i, size_t j);
+		void scan(size_t i, size_t j, const Token& token);
+		void predict(size_t i, size_t j, const ParserGrammar& g);
+		void complete(size_t i, size_t j);
 
 		static void tryEmplace(StateSet& stateSet, const EarleyItem& item);
 
-		const Grammar& m_grammar;
+		StateSets m_stateSets;
+		const ParserGrammar& m_grammar;
 	};
 }

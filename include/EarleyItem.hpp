@@ -20,6 +20,8 @@ namespace app
 
 		void print() const;
 
+		bool isEmpty() const;
+
 		NextType getNextType() const;
 		const Term* getNextTerm() const;
 		const NonTerm* getNextNonTerm() const;
@@ -31,11 +33,10 @@ namespace app
 
 		size_t getEndPosition() const;
 
-
 		bool operator==(const EarleyItem& other) const;
 
 	private:
-		const RuleSet& m_item;
+		const RuleSet& m_set;
 
 		std::string_view m_name;
 		size_t m_origin = 0;

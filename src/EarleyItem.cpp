@@ -2,14 +2,14 @@
 
 app::EarleyItem::EarleyItem(const std::string_view name, const RuleSet& set, 
 	const size_t origin, const size_t next) :
-	m_item(set), m_name(name), m_origin(origin), m_next(next)
+	m_set(set), m_name(name), m_origin(origin), m_next(next)
 {
 }
 
 app::EarleyItem app::EarleyItem::createAdvanced(size_t n) const
 {
 	auto result{ *this };
-	result.m_next = std::min(result.m_item.rules.size(), result.m_next + n);
+	result.m_next = std::min(result.m_set.rules.size(), result.m_next + n);
 	return result;
 }
 
@@ -17,7 +17,7 @@ void app::EarleyItem::print() const
 {
 	printf("(%zu) %s -> ", m_origin, std::string{ m_name }.c_str());
 
-	for (size_t i = 0; i < m_item.rules.size(); ++i) {
+	for (size_t i = 0; i < m_set.rules.size(); ++i) {
 		if (i == m_next) {
 			printf(". ");
 		}
@@ -31,21 +31,26 @@ void app::EarleyItem::print() const
 			else {
 				printf("%s ", arg.name.c_str());
 			}
-		}, m_item.rules[i]);
+		}, m_set.rules[i]);
 	}
 
-	if (m_item.rules.empty() || m_next >= m_item.rules.size()) {
+	if (m_set.rules.empty() || m_next >= m_set.rules.size()) {
 		printf(". ");
 	}
 
 	printf("\n");
 }
 
+bool app::EarleyItem::isEmpty() const
+{
+	return m_set.rules.empty();
+}
+
 app::EarleyItem::NextType app::EarleyItem::getNextType() const
 {
 	auto result = NextType::Null;
 
-	if (m_next < m_item.rules.size()) {
+	if (m_next < m_set.rules.size()) {
 		std::visit([&result](auto && arg) {
 			using T = std::decay_t<decltype(arg)>;
 
@@ -55,7 +60,7 @@ app::EarleyItem::NextType app::EarleyItem::getNextType() const
 			else {
 				result = NextType::NonTerm;
 			}
-			}, m_item.rules[m_next]);
+		}, m_set.rules[m_next]);
 	}
 
 	return result;
@@ -63,20 +68,20 @@ app::EarleyItem::NextType app::EarleyItem::getNextType() const
 
 const app::Term* app::EarleyItem::getNextTerm() const
 {
-	if (m_next >= m_item.rules.size()) {
+	if (m_next >= m_set.rules.size()) {
 		return nullptr;
 	}
 
-	return std::get_if<Term>(&m_item.rules[m_next]);
+	return std::get_if<Term>(&m_set.rules[m_next]);
 }
 
 const app::NonTerm* app::EarleyItem::getNextNonTerm() const
 {
-	if (m_next >= m_item.rules.size()) {
+	if (m_next >= m_set.rules.size()) {
 		return nullptr;
 	}
 
-	return std::get_if<NonTerm>(&m_item.rules[m_next]);
+	return std::get_if<NonTerm>(&m_set.rules[m_next]);
 }
 
 std::string_view app::EarleyItem::getName() const
@@ -96,10 +101,10 @@ size_t app::EarleyItem::getNextPosition() const
 
 size_t app::EarleyItem::getEndPosition() const
 {
-	return m_origin + m_item.rules.size();
+	return m_origin + m_set.rules.size();
 }
 
 bool app::EarleyItem::operator==(const EarleyItem& other) const
 {
-	return m_item == other.m_item && m_origin == other.m_origin && m_next == other.m_next;
+	return m_set == other.m_set && m_origin == other.m_origin && m_next == other.m_next;
 }

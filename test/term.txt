@@ -1,1 +1,15 @@
-1+(2*3-4)
+let test_number;
+test_number = 12;
+test_number = (test_number + 10) / 0.5;
+
+let i;
+i = 10;
+
+test_number != 100;
+
+while (i != 0) {
+	if (test_number > 100) {
+		test_number = test_number * 10;
+	}
+	--i;
+}

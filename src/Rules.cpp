@@ -17,6 +17,11 @@ app::Rules::Rules(const RuleSet& t) :
 {
 }
 
+app::Rules::Rules(const std::vector<RuleSet>& t) :
+	m_sets(t)
+{
+}
+
 void app::Rules::setName(const std::string& name)
 {
 	m_name = name;
@@ -74,6 +79,16 @@ bool app::NonTerm::operator==(const NonTerm& other) const
 bool app::RuleSet::operator==(const RuleSet& other) const
 {
 	return rules == other.rules;
+}
+
+app::Rules app::operator|(const RuleVariant& l, const RuleSet& r)
+{
+	return Rules{ {RuleSet{{l}}, r} };
+}
+
+app::Rules app::operator|(const RuleVariant& l, const RuleVariant& r)
+{
+	return Rules{ {RuleSet{{l}}, RuleSet{{r}}} };
 }
 
 app::RuleSet app::operator>>(const RuleSet& l, const RuleVariant& r)
