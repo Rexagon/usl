@@ -23,6 +23,8 @@ namespace app
 		bool isEmpty() const;
 		bool isComplete() const;
 
+		const RuleSet& getRuleSet() const;
+
 		NextType getNextType() const;
 		const Term* getNextTerm() const;
 		const NonTerm* getNextNonTerm() const;

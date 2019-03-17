@@ -2,6 +2,8 @@
 
 #include <stack>
 #include <functional>
+#include <chrono>
+#include <thread>
 
 app::Parser::Parser() :
 	m_grammar(ParserGrammar::create())
@@ -10,6 +12,8 @@ app::Parser::Parser() :
 
 void app::Parser::parse(const std::vector<Token>& tokens)
 {
+	const auto BEFORE = std::chrono::high_resolution_clock::now();
+
 	// Fill parser states
 	m_stateSets.clear();
 	m_stateSets.reserve(tokens.size());
@@ -68,13 +72,16 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 
 	for (size_t i = 0; i < m_stateSets.size(); ++i) {
 		for (const auto& item : m_stateSets[i]) {
-			if (item.isComplete() && item.getOrigin() != i) {
+			if (item.isComplete() && 
+				item.getOrigin() != i &&
+				item.getRuleSet().isImportant) 
+			{
 				completedItems[item.getOrigin()].emplace_front(&item, i);
 			}
 		}
 	}
 
-	for (size_t i = 0; i < completedItems.size(); ++i) {
+	/*for (size_t i = 0; i < completedItems.size(); ++i) {
 		printf("==%zu==\n", i);
 
 		for (const auto& item : completedItems[i]) {
@@ -83,7 +90,7 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 		}
 
 		printf("\n");
-	}
+	}*/
 
 	// Generate AST
 	struct SyntaxNode
@@ -93,8 +100,6 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 
 		std::list<std::unique_ptr<SyntaxNode>> children;
 	};
-
-	printf("\n%zu\n", tokens.size());
 
 	SyntaxNode root;
 
@@ -122,6 +127,11 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 		leaf->token = &tokens[i];
 		stack.top()->children.emplace_back(std::move(leaf));
 	}
+
+	const auto AFTER = std::chrono::high_resolution_clock::now();
+
+	using MilliDuration = std::chrono::duration<double, std::milli>;
+	printf("AST generated in %f ms\n", std::chrono::duration_cast<MilliDuration>(AFTER - BEFORE).count());
 
 	std::unordered_set<size_t> depthMask;
 	std::function<void(const SyntaxNode*, size_t)> printTree;

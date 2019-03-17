@@ -60,6 +60,7 @@ namespace app
 		bool operator==(const RuleSet& other) const;
 
 		std::vector<RuleVariant> rules;
+		bool isImportant = true;
 	};
 
 	Rules operator|(const RuleVariant& l, const RuleSet& r);
@@ -68,4 +69,7 @@ namespace app
 	RuleSet operator>>(const RuleSet& l, const RuleVariant& r);
 	RuleSet operator>>(const RuleVariant& l, const RuleSet& r);
 	RuleSet operator>>(const RuleVariant& l, const RuleVariant& r);
+
+	RuleSet operator<<(const RuleSet& l, bool important);
+	RuleSet operator<<(const RuleVariant& l, bool important);
 }

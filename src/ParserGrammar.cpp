@@ -7,12 +7,12 @@ const std::string app::ParserGrammar::STARTING_RULE = "program";
 app::ParserGrammar::ParserGrammar()
 {
 	m_rules[STARTING_RULE] =
-		RuleSet{} |
-		NonTerm{ "general_statement" } >> NonTerm{ STARTING_RULE };
+		RuleSet{} << false |
+		NonTerm{ "general_statement" } >> NonTerm{ STARTING_RULE } << false;
 
 	m_rules["general_statement"] =
-		NonTerm{ "statement" } |
-		NonTerm{ "function_declaration" };
+		NonTerm{ "statement" } << false |
+		NonTerm{ "function_declaration" } << false;
 
 	m_rules["statement"] =
 		NonTerm{ "while_loop" } |
@@ -41,7 +41,7 @@ app::ParserGrammar::ParserGrammar()
 
 	m_rules["block_statement"] =
 		RuleSet{} |
-		NonTerm{ "statement" } >> NonTerm{"block_statement"};
+		NonTerm{ "statement" } >> NonTerm{"block_statement"} << false;
 
 	m_rules["condition"] =
 		Term{ TokenType::ParenthesisOpen } >> NonTerm{ "expression" } >> Term{ TokenType::ParenthesisClose };
@@ -61,41 +61,41 @@ app::ParserGrammar::ParserGrammar()
 		Term{ TokenType::KeywordLet } >> Term{ TokenType::Identifier } >> Term{ TokenType::OperatorAssignment } >> NonTerm{ "expression" };
 
 	m_rules["expression"] =
-		NonTerm{ "logical_or_expression" } |
+		NonTerm{ "logical_or_expression" } << false |
 		NonTerm{ "unary_expression" } >> Term{ TokenType::OperatorAssignment } >> NonTerm{ "expression" };
 
 	m_rules["logical_or_expression"] =
-		NonTerm{ "logical_and_expression" } |
+		NonTerm{ "logical_and_expression" } << false |
 		NonTerm{ "logical_or_expression" } >> Term{ TokenType::OperatorOr } >> NonTerm{ "logical_and_expression" };
 
 	m_rules["logical_and_expression"] =
-		NonTerm{ "equality_expression" } |
+		NonTerm{ "equality_expression" } << false |
 		NonTerm{ "logical_and_expression" } >> Term{ TokenType::OperatorAnd } >> NonTerm{ "equality_expression" };
 
 	m_rules["equality_expression"] =
-		NonTerm{ "relational_expression" } |
+		NonTerm{ "relational_expression" } << false |
 		NonTerm{ "equality_expression" } >> Term{ TokenType::OperatorEq } >> NonTerm{ "relational_expression" } |
 		NonTerm{ "equality_expression" } >> Term{ TokenType::OperatorNeq } >> NonTerm{ "relational_expression" };
 
 	m_rules["relational_expression"] =
-		NonTerm{ "additive_expression" } |
+		NonTerm{ "additive_expression" } << false |
 		NonTerm{ "relational_expression" } >> Term{ TokenType::OperatorLt } >> NonTerm{ "additive_expression" } |
 		NonTerm{ "relational_expression" } >> Term{ TokenType::OperatorLeq } >> NonTerm{ "additive_expression" } |
 		NonTerm{ "relational_expression" } >> Term{ TokenType::OperatorGt } >> NonTerm{ "additive_expression" } |
 		NonTerm{ "relational_expression" } >> Term{ TokenType::OperatorGeq } >> NonTerm{ "additive_expression" };
 
 	m_rules["additive_expression"] =
-		NonTerm{ "multiplicative_expression" } |
+		NonTerm{ "multiplicative_expression" } << false |
 		NonTerm{ "additive_expression" } >> Term{ TokenType::OperatorPlus } >> NonTerm{ "multiplicative_expression" } |
 		NonTerm{ "additive_expression" } >> Term{ TokenType::OperatorMinus } >> NonTerm{ "multiplicative_expression" };
 
 	m_rules["multiplicative_expression"] =
-		NonTerm{ "unary_expression" } |
+		NonTerm{ "unary_expression" } << false |
 		NonTerm{ "multiplicative_expression" } >> Term{ TokenType::OperatorMul } >> NonTerm{ "unary_expression" } |
 		NonTerm{ "multiplicative_expression" } >> Term{ TokenType::OperatorDiv } >> NonTerm{ "unary_expression" };
 
 	m_rules["unary_expression"] =
-		NonTerm{ "postfix_expression" } |
+		NonTerm{ "postfix_expression" } << false |
 		Term{ TokenType::OperatorIncrement } >> NonTerm{ "unary_expression" } |
 		Term{ TokenType::OperatorDecrement } >> NonTerm{ "unary_expression" } |
 		Term{ TokenType::OperatorPlus } >> NonTerm{ "unary_expression" } |
@@ -103,14 +103,14 @@ app::ParserGrammar::ParserGrammar()
 		Term{ TokenType::OperatorNegate } >> NonTerm{ "unary_expression" };
 
 	m_rules["postfix_expression"] =
-		NonTerm{ "primary_expression" } |
+		NonTerm{ "primary_expression" } << false |
 		NonTerm{ "postfix_expression" } >> Term{ TokenType::OperatorIncrement } |
 		NonTerm{ "postfix_expression" } >> Term{ TokenType::OperatorDecrement } |
 		NonTerm{ "postfix_expression" } >> Term{ TokenType::StructureReference } >> Term{ TokenType::Identifier } |
 		NonTerm{ "postfix_expression" } >> Term{ TokenType::ParenthesisOpen } >> NonTerm{ "call_arguments" } >> Term{ TokenType::ParenthesisClose };
 
 	m_rules["primary_expression"] =
-		NonTerm{ "primary_expression" } |
+		NonTerm{ "primary_expression" } << false |
 		Term{ TokenType::Identifier } |
 		Term{ TokenType::Number } |
 		Term{ TokenType::String } |
@@ -184,10 +184,4 @@ void app::ParserGrammar::finalize()
 			break;
 		}
 	}
-
-	printf("Nullable rules: ");
-	for (const auto& nullable : m_nullableRules) {
-		printf("%s ", nullable.c_str());
-	}
-	printf("\n\n");
 }

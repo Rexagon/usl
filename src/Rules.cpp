@@ -118,3 +118,18 @@ app::RuleSet app::operator>>(const RuleVariant& l, const RuleVariant& r)
 	result.rules = { l, r };
 	return result;
 }
+
+app::RuleSet app::operator<<(const RuleSet& l, const bool important)
+{
+	auto result{ l };
+	result.isImportant = important;
+	return result;
+}
+
+app::RuleSet app::operator<<(const RuleVariant& l, const bool important)
+{
+	RuleSet result;
+	result.rules = { l };
+	result.isImportant = important;
+	return result;
+}

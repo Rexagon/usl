@@ -1,4 +1,7 @@
+2 + 2 * (1 + 1);
+
 function test_function(first_arg, second_arg) {
+	let test = qwe;
 	return "hello world with spaces and strings!";
 }
 
