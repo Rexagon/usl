@@ -11,6 +11,7 @@ include_directories(${SOURCE_DIR} include)
 
 set(SOURCES
 	"${SOURCE_DIR}/EarleyItem.cpp"
+	"${SOURCE_DIR}/Evaluator.cpp"
 	"${SOURCE_DIR}/Lexer.cpp"
 	"${SOURCE_DIR}/LexerGrammar.cpp"
     "${SOURCE_DIR}/main.cpp"
@@ -18,6 +19,7 @@ set(SOURCES
 	"${SOURCE_DIR}/ParserGrammar.cpp"
 	"${SOURCE_DIR}/Position.cpp"
 	"${SOURCE_DIR}/Rules.cpp"
+	"${SOURCE_DIR}/Symbol.cpp"
 )
 
 add_executable(usl ${SOURCES})
