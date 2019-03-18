@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "Lexer.hpp"
+#include "Parser.hpp"
 
 struct Arguments final
 {
@@ -75,11 +76,15 @@ int main(const int argc, char** argv)
 
 		if (arguments.showLexerOutput) {
 			for (const auto& token : tokens) {
-				std::cout << "{ token: \"" << token.text << 
-					"\",\n  type: " << static_cast<size_t>(token.type) << 
+				std::cout << "{ token: \"" << token.second << 
+					"\",\n  type: " << static_cast<size_t>(token.first) << 
 					" }\n\n";
 			}
 		}
+
+		// Parse tokens
+		app::Parser parser;
+		parser.parse(tokens);
 	}
 	catch (const std::runtime_error& e) {
 		std::cerr << e.what() << std::endl;

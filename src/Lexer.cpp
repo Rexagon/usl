@@ -28,7 +28,7 @@ std::vector<app::Token> app::Lexer::run(std::string_view text) const
 		else {
 			const std::string currentToken{ Position::toString(begin, end + 1) };
 
-			for (size_t i = 0; i < TOKEN_COUNT; ++i) {
+			for (size_t i = 0; i < lexer_grammar::TOKEN_COUNT; ++i) {
 				nextInvalidExpressions.set(i,
 					!std::regex_match(currentToken, m_regexes[i]));
 			}
@@ -36,17 +36,20 @@ std::vector<app::Token> app::Lexer::run(std::string_view text) const
 
 		if (nextInvalidExpressions.all() && (begin != end))
 		{
-			auto tokenType = TokenType::Invalid;
+			size_t tokenType = lexer_grammar::Invalid;
 
-			for (size_t i = 0; i < TOKEN_COUNT; ++i) {
+			for (size_t i = 0; i < lexer_grammar::TOKEN_COUNT; ++i) {
 				if (!invalidExpressions.test(i)) {
-					tokenType = static_cast<TokenType>(i);
+					tokenType = i;
 					break;
 				}
 			}
 
-			if (tokenType != TokenType::Invalid) {
-				result.emplace_back(Token{ Position::toString(begin, end), tokenType});
+			if (tokenType != lexer_grammar::Invalid &&
+				tokenType != lexer_grammar::CommentSingleLine &&
+				tokenType != lexer_grammar::CommentMultiLine)
+			{
+				result.emplace_back(tokenType, Position::toString(begin, end));
 			}
 
 			invalidExpressions.reset();

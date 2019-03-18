@@ -12,7 +12,7 @@ statement = while_loop |
             (variable_declaration SEMICOLON) |
             (expression SEMICOLON)
 
-function_declaration = KW_FUNCTION PAR_O function_arguments PAR_C BR_O function_statement* BR_C
+function_declaration = KW_FUNCTION ID PAR_O function_arguments PAR_C BR_O function_statement* BR_C
 
 function_statement = statement | (KW_RETURN [expression] SEMICOLON)
 
@@ -28,7 +28,7 @@ loop_statement = statement | (KW_BREAK SEMICOLON) | (KW_CONTINUE SEMICOLON)
 
 branch = KW_IF PAR_O expression PAR_C BR_O statement* BR_C [else_branch]
 
-else_beanch = KW_ELSE BR_O statement* BR_C
+else_branch = KW_ELSE BR_O statement* BR_C
 
 variable_declaration = KW_LET ID [OP_ASSIGN expression]
 
