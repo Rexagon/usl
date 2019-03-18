@@ -1,7 +1,7 @@
 #include "Symbol.hpp"
 
 app::Symbol::Symbol() :
-	m_type(Type::Null), m_data(Null{})
+	m_type(Type::Null), m_data(std::nullopt)
 {
 }
 
@@ -38,7 +38,7 @@ app::Symbol::Symbol(CoreFunction* value) :
 void app::Symbol::assign(Symbol* symbol)
 {
 	if (symbol == nullptr || symbol->m_type == Type::Null) {
-		m_data = Null{};
+		m_data = std::nullopt;
 		m_type = Type::Null;
 		return;
 	}

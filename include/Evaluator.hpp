@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stack>
-#include <variant>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -9,62 +8,15 @@
 
 namespace app
 {
-	namespace opcode
-	{
-		enum Code
-		{
-			DECL,
-			ASSIGN,
-
-			PUSH,
-			POP,
-
-			NOT,
-			UNM,
-			INC,
-			DEC,
-
-			ADD,
-			SUB,
-			MUL,
-			DIV,
-
-			AND,
-			OR,
-			EQ,
-			NEQ,
-			LT,
-			LE,
-			GT,
-			GE,
-
-			JMP,
-			CALL,
-			RET,
-
-			DEFBLOCK,
-			DELBLOCK,
-
-			Count,
-		};
-
-		constexpr auto OPCODE_COUNT = Count;
-	}
-
-	using Item = std::variant<Null, bool, double, std::string, std::string_view, opcode::Code>;
-	using StackItem = std::variant<Null, bool, double, std::string, std::string_view>;
-
 	class Evaluator final
 	{
-		using ByteCode = std::vector<Item>;
-
 	public:
 		void eval(const ByteCode& bytecode);
 
 	private:
 		void handleDecl(const ByteCode& bytecode, size_t& position);
 		void handleAssign(const ByteCode& bytecode, size_t& position);
-		void handlePushPop(const ByteCode& bytecode, size_t& position, opcode::Code op);
+		void handlePop(const ByteCode& bytecode, size_t& position);
 		void handleUnary(const ByteCode& bytecode, size_t& position, opcode::Code op);
 		void handleBinaryMath(const ByteCode& bytecode, size_t& position, opcode::Code op);
 		void handleBinaryLogic(const ByteCode& bytecode, size_t& position, opcode::Code op);

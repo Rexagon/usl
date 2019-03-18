@@ -8,18 +8,18 @@ using namespace app::parser_grammar;
 app::ParserGrammar::ParserGrammar()
 {
 	m_rules[STARTING_RULE] =
-		RuleSet{} << false |
-		NonTerm{ GeneralStatement } >> NonTerm{ STARTING_RULE } << false;
+		RuleSet{} << NotImportant{} |
+		NonTerm{ GeneralStatement } >> NonTerm{ STARTING_RULE } << NotImportant{};
 
 	m_rules[GeneralStatement] =
-		NonTerm{ Statement } << false |
-		NonTerm{ FunctionDeclaration } << false;
+		NonTerm{ Statement } << NotImportant{} |
+		NonTerm{ FunctionDeclaration } << NotImportant{};
 
 	m_rules[Statement] =
-		NonTerm{ WhileLoop } << false |
-		NonTerm{ Branch } << false |
+		NonTerm{ WhileLoop } << NotImportant{} |
+		NonTerm{ Branch } << NotImportant{} |
 		NonTerm{ VariableDeclaration } >> Term{ Semicolon } |
-		NonTerm{ Expression } >> Term{ Semicolon } |
+		NonTerm{ Expression } >> Term{ Semicolon } << createSimpleTranslator(opcode::POP) |
 		Term{ KeywordReturn } >> NonTerm{ Expression } >> Term{ Semicolon } |
 		Term{ KeywordBreak } >> Term{ Semicolon } |
 		Term{ KeywordContinue } >> Term{ Semicolon };
@@ -30,7 +30,7 @@ app::ParserGrammar::ParserGrammar()
 
 	m_rules[FunctionArguments] =
 		RuleSet{} |
-		NonTerm{ FunctionArgument } << false;
+		NonTerm{ FunctionArgument } << NotImportant{};
 
 	m_rules[FunctionArgument] =
 		Term{ Identifier } >> NonTerm{ CommaFunctionArgument };
@@ -45,7 +45,7 @@ app::ParserGrammar::ParserGrammar()
 
 	m_rules[BlockStatement] =
 		RuleSet{} |
-		NonTerm{ Statement } >> NonTerm{ BlockStatement } << false;
+		NonTerm{ Statement } >> NonTerm{ BlockStatement } << NotImportant{};
 
 	m_rules[Condition] =
 		Term{ ParenthesisOpen } >> NonTerm{ Expression } >> Term{ ParenthesisClose };
@@ -61,53 +61,53 @@ app::ParserGrammar::ParserGrammar()
 		Term{ KeywordElse } >> NonTerm{ Block };
 
 	m_rules[VariableDeclaration] =
-		Term{ KeywordLet } >> Term{ Identifier } |
+		Term{ KeywordLet } >> Term{ Identifier } << createSimpleTranslator(opcode::DECL) |
 		Term{ KeywordLet } >> Term{ Identifier } >> Term{ OperatorAssignment } >> NonTerm{ Expression };
 
 	m_rules[Expression] =
-		NonTerm{ LogicalOrExpression } << false |
-		NonTerm{ UnaryExpression } >> Term{ OperatorAssignment } >> NonTerm{ Expression };
+		NonTerm{ LogicalOrExpression } << NotImportant{} |
+		NonTerm{ UnaryExpression } >> Term{ OperatorAssignment } >> NonTerm{ Expression } << createSimpleTranslator(opcode::ASSIGN);
 
 	m_rules[LogicalOrExpression] =
-		NonTerm{ LogicalAndExpression } << false |
-		NonTerm{ LogicalOrExpression } >> Term{ OperatorOr } >> NonTerm{ LogicalAndExpression };
+		NonTerm{ LogicalAndExpression } << NotImportant{} |
+		NonTerm{ LogicalOrExpression } >> Term{ OperatorOr } >> NonTerm{ LogicalAndExpression } << createSimpleTranslator(opcode::OR);
 
 	m_rules[LogicalAndExpression] =
-		NonTerm{ EqualityExpression } << false |
-		NonTerm{ LogicalAndExpression } >> Term{ OperatorAnd } >> NonTerm{ EqualityExpression };
+		NonTerm{ EqualityExpression } << NotImportant{} |
+		NonTerm{ LogicalAndExpression } >> Term{ OperatorAnd } >> NonTerm{ EqualityExpression } << createSimpleTranslator(opcode::AND);
 
 	m_rules[EqualityExpression] =
-		NonTerm{ RelationalExpression } << false |
-		NonTerm{ EqualityExpression } >> Term{ OperatorEq } >> NonTerm{ RelationalExpression } |
-		NonTerm{ EqualityExpression } >> Term{ OperatorNeq } >> NonTerm{ RelationalExpression };
+		NonTerm{ RelationalExpression } << NotImportant{} |
+		NonTerm{ EqualityExpression } >> Term{ OperatorEq } >> NonTerm{ RelationalExpression } << createSimpleTranslator(opcode::EQ) |
+		NonTerm{ EqualityExpression } >> Term{ OperatorNeq } >> NonTerm{ RelationalExpression } << createSimpleTranslator(opcode::NEQ);
 
 	m_rules[RelationalExpression] =
-		NonTerm{ AdditiveExpression } << false |
-		NonTerm{ RelationalExpression } >> Term{ OperatorLt } >> NonTerm{ AdditiveExpression } |
-		NonTerm{ RelationalExpression } >> Term{ OperatorLeq } >> NonTerm{ AdditiveExpression } |
-		NonTerm{ RelationalExpression } >> Term{ OperatorGt } >> NonTerm{ AdditiveExpression } |
-		NonTerm{ RelationalExpression } >> Term{ OperatorGeq } >> NonTerm{ AdditiveExpression };
+		NonTerm{ AdditiveExpression } << NotImportant{} |
+		NonTerm{ RelationalExpression } >> Term{ OperatorLt } >> NonTerm{ AdditiveExpression } << createSimpleTranslator(opcode::LT) |
+		NonTerm{ RelationalExpression } >> Term{ OperatorLeq } >> NonTerm{ AdditiveExpression } << createSimpleTranslator(opcode::LE) |
+		NonTerm{ RelationalExpression } >> Term{ OperatorGt } >> NonTerm{ AdditiveExpression } << createSimpleTranslator(opcode::GT) |
+		NonTerm{ RelationalExpression } >> Term{ OperatorGeq } >> NonTerm{ AdditiveExpression } << createSimpleTranslator(opcode::GE);
 
 	m_rules[AdditiveExpression] =
-		NonTerm{ MultiplicativeExpression } << false |
-		NonTerm{ AdditiveExpression } >> Term{ OperatorPlus } >> NonTerm{ MultiplicativeExpression } |
-		NonTerm{ AdditiveExpression } >> Term{ OperatorMinus } >> NonTerm{ MultiplicativeExpression };
+		NonTerm{ MultiplicativeExpression } << NotImportant{} |
+		NonTerm{ AdditiveExpression } >> Term{ OperatorPlus } >> NonTerm{ MultiplicativeExpression } << createSimpleTranslator(opcode::ADD) |
+		NonTerm{ AdditiveExpression } >> Term{ OperatorMinus } >> NonTerm{ MultiplicativeExpression } << createSimpleTranslator(opcode::SUB);
 
 	m_rules[MultiplicativeExpression] =
-		NonTerm{ UnaryExpression } << false |
-		NonTerm{ MultiplicativeExpression } >> Term{ OperatorMul } >> NonTerm{ UnaryExpression } |
-		NonTerm{ MultiplicativeExpression } >> Term{ OperatorDiv } >> NonTerm{ UnaryExpression };
+		NonTerm{ UnaryExpression } << NotImportant{} |
+		NonTerm{ MultiplicativeExpression } >> Term{ OperatorMul } >> NonTerm{ UnaryExpression } << createSimpleTranslator(opcode::MUL) |
+		NonTerm{ MultiplicativeExpression } >> Term{ OperatorDiv } >> NonTerm{ UnaryExpression } << createSimpleTranslator(opcode::DIV);
 
 	m_rules[UnaryExpression] =
-		NonTerm{ PostfixExpression } << false |
-		Term{ OperatorIncrement } >> NonTerm{ UnaryExpression } |
-		Term{ OperatorDecrement } >> NonTerm{ UnaryExpression } |
-		Term{ OperatorPlus } >> NonTerm{ UnaryExpression } |
+		NonTerm{ PostfixExpression } << NotImportant{} |
+		Term{ OperatorIncrement } >> NonTerm{ UnaryExpression } << createSimpleTranslator(opcode::INC) |
+		Term{ OperatorDecrement } >> NonTerm{ UnaryExpression } << createSimpleTranslator(opcode::DEC) |
+		Term{ OperatorPlus } >> NonTerm{ UnaryExpression } << NotImportant{} |
 		Term{ OperatorMinus } >> NonTerm{ UnaryExpression } |
 		Term{ OperatorNegate } >> NonTerm{ UnaryExpression };
 
 	m_rules[PostfixExpression] =
-		NonTerm{ PrimaryExpression } << false |
+		NonTerm{ PrimaryExpression } << NotImportant{} |
 		NonTerm{ PostfixExpression } >> Term{ OperatorIncrement } |
 		NonTerm{ PostfixExpression } >> Term{ OperatorDecrement } |
 		NonTerm{ PostfixExpression } >> Term{ StructureReference } >> Term{ Identifier } |
@@ -121,7 +121,7 @@ app::ParserGrammar::ParserGrammar()
 
 	m_rules[CallArguments] =
 		RuleSet{} |
-		NonTerm{ CallArgument } << false;
+		NonTerm{ CallArgument } << NotImportant{};
 
 	m_rules[CallArgument] =
 		NonTerm{ Expression } >> NonTerm{ CommaCallArgument };

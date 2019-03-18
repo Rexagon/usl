@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-void app::Evaluator::eval(const std::vector<Item>& bytecode)
+void app::Evaluator::eval(const ByteCode& bytecode)
 {
 	if (bytecode.empty()) {
 		return;
@@ -12,7 +12,7 @@ void app::Evaluator::eval(const std::vector<Item>& bytecode)
 	while (position != bytecode.size()) {
 		const auto& item = bytecode[position];
 
-		std::visit([this, &position, &bytecode](auto&& arg) {
+		std::visit([this, &position, &bytecode](auto && arg) {
 			using T = std::decay_t<decltype(arg)>;
 
 			if constexpr (!std::is_same_v<T, opcode::Code>) {
@@ -29,9 +29,8 @@ void app::Evaluator::eval(const std::vector<Item>& bytecode)
 					handleAssign(bytecode, position);
 					break;
 
-				case opcode::PUSH:
 				case opcode::POP:
-					handlePushPop(bytecode, position, arg);
+					handlePop(bytecode, position);
 					break;
 
 				case opcode::NOT:
@@ -74,38 +73,46 @@ void app::Evaluator::eval(const std::vector<Item>& bytecode)
 					throw std::runtime_error("Unknown opcode");
 				}
 			}
-		}, item);
+			}, item);
 	}
 }
 
 void app::Evaluator::handleDecl(const ByteCode& bytecode, size_t& position)
 {
+	//TODO: implement variable declaration
 }
 
 void app::Evaluator::handleAssign(const ByteCode& bytecode, size_t& position)
 {
+	//TODO: implement variable assign
 }
 
-void app::Evaluator::handlePushPop(const ByteCode& bytecode, size_t& position, opcode::Code op)
+void app::Evaluator::handlePop(const ByteCode& bytecode, size_t& position)
 {
+	//TODO: implement pop from stack
 }
 
 void app::Evaluator::handleUnary(const ByteCode& bytecode, size_t& position, opcode::Code op)
 {
+	//TODO: implement unary math
 }
 
 void app::Evaluator::handleBinaryMath(const ByteCode& bytecode, size_t& position, opcode::Code op)
 {
+	//TODO: implement binary math
 }
 
 void app::Evaluator::handleBinaryLogic(const ByteCode& bytecode, size_t& position, opcode::Code op)
 {
+	//TODO: implement binary boolean operations
 }
 
 void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, opcode::Code op)
 {
+	//TODO: implement evaluation control functions
 }
 
 void app::Evaluator::handleBlocks(const ByteCode& bytecode, size_t& position, opcode::Code op)
 {
+	//TODO: implement scope block definition and deletion
 }

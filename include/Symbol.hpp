@@ -1,15 +1,11 @@
 #pragma once
 
-#include <string>
-#include <variant>
-#include <optional>
+#include "ByteCode.hpp"
 
 namespace app
 {
 	class CoreObject;
 	class CoreFunction;
-
-	struct Null final {};
 
 	struct ScriptFunction final
 	{
@@ -20,7 +16,7 @@ namespace app
 	class Symbol final
 	{
 		using DataVariant = std::variant<
-			Null,
+			std::nullopt_t,
 			bool, 
 			double, 
 			std::string, 
