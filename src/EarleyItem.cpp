@@ -1,6 +1,8 @@
 #include "EarleyItem.hpp"
 
-app::EarleyItem::EarleyItem(const std::string_view name, const RuleSet& set, 
+#include "ParserGrammar.hpp"
+
+app::EarleyItem::EarleyItem(const size_t name, const RuleSet& set, 
 	const size_t origin, const size_t next) :
 	m_set(set), m_name(name), m_origin(origin), m_next(next)
 {
@@ -15,7 +17,7 @@ app::EarleyItem app::EarleyItem::createAdvanced(size_t n) const
 
 void app::EarleyItem::print() const
 {
-	printf("(%zu) %s -> ", m_origin, std::string{ m_name }.c_str());
+	printf("(%zu) %s -> ", m_origin, parser_grammar::getString(m_name));
 
 	for (size_t i = 0; i < m_set.rules.size(); ++i) {
 		if (i == m_next) {
@@ -26,10 +28,10 @@ void app::EarleyItem::print() const
 			using T = std::decay_t<decltype(arg)>;
 
 			if constexpr (std::is_same_v<T, Term>) {
-				printf("Term(%d) ", arg.type);
+				printf("Term(%zu) ", arg.type);
 			}
 			else {
-				printf("%s ", arg.name.c_str());
+				printf("%s ", parser_grammar::getString(arg.name));
 			}
 		}, m_set.rules[i]);
 	}
@@ -94,7 +96,7 @@ const app::NonTerm* app::EarleyItem::getNextNonTerm() const
 	return std::get_if<NonTerm>(&m_set.rules[m_next]);
 }
 
-std::string_view app::EarleyItem::getName() const
+size_t app::EarleyItem::getName() const
 {
 	return m_name;
 }

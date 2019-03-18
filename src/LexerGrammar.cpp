@@ -1,53 +1,55 @@
 #include "LexerGrammar.hpp"
 
+using namespace app::lexer_grammar;
+
 const app::RegexArray& app::buildRegexes()
 {
 	static RegexArray regexes{
-		(TokenType::KeywordLet,			std::regex{"^let"}),
-		(TokenType::KeywordIf,			std::regex{"^if"}),
-		(TokenType::KeywordElse,		std::regex{"^else"}),
-		(TokenType::KeywordWhile,		std::regex{"^while"}),
-		(TokenType::KeywordFor,			std::regex{"^for"}),
-		(TokenType::KeywordBreak,		std::regex{"^break"}),
-		(TokenType::KeywordContinue,	std::regex{"^continue"}),
-		(TokenType::KeywordFunction,	std::regex{"^function"}),
-		(TokenType::KeywordReturn,		std::regex{"^return"}),
+		(KeywordLet,			std::regex{"^let"}),
+		(KeywordIf,				std::regex{"^if"}),
+		(KeywordElse,			std::regex{"^else"}),
+		(KeywordWhile,			std::regex{"^while"}),
+		(KeywordFor,			std::regex{"^for"}),
+		(KeywordBreak,			std::regex{"^break"}),
+		(KeywordContinue,		std::regex{"^continue"}),
+		(KeywordFunction,		std::regex{"^function"}),
+		(KeywordReturn,			std::regex{"^return"}),
 
-		(TokenType::Identifier,			std::regex{"^[a-zA-Z_]+"}),
-		(TokenType::String,				std::regex{"^\"(?:\\\\.|[^\"])*\"?"}),
-		(TokenType::Number,				std::regex{"^[0-9]+\\.?[0-9]*"}),
+		(Identifier,			std::regex{"^[a-zA-Z_]+"}),
+		(String,				std::regex{"^\"(?:\\\\.|[^\"])*\"?"}),
+		(Number,				std::regex{"^[0-9]+\\.?[0-9]*"}),
 
-		(TokenType::OperatorAssignment, std::regex{"^="}),
-		(TokenType::OperatorOr,			std::regex{"^\\|\\|"}),
-		(TokenType::OperatorAnd,		std::regex{"^&&"}),
-		(TokenType::OperatorEq,			std::regex{"^=="}),
-		(TokenType::OperatorNeq,		std::regex{"^!="}),
-		(TokenType::OperatorLt,			std::regex{"^<"}),
-		(TokenType::OperatorLeq,		std::regex{"^<="}),
-		(TokenType::OperatorGt,			std::regex{"^>"}),
-		(TokenType::OperatorGeq,		std::regex{"^<="}),
-		(TokenType::OperatorPlus,		std::regex{"^\\+"}),
-		(TokenType::OperatorMinus,		std::regex{"^-"}),
-		(TokenType::OperatorMul,		std::regex{"^\\*"}),
-		(TokenType::OperatorDiv,		std::regex{"^/"}),
-		(TokenType::OperatorIncrement,	std::regex{"^\\+\\+"}),
-		(TokenType::OperatorDecrement,	std::regex{"^--"}),
-		(TokenType::OperatorNegate,		std::regex{"^!"}),
+		(OperatorAssignment,	std::regex{"^="}),
+		(OperatorOr,			std::regex{"^\\|\\|"}),
+		(OperatorAnd,			std::regex{"^&&"}),
+		(OperatorEq,			std::regex{"^=="}),
+		(OperatorNeq,			std::regex{"^!="}),
+		(OperatorLt,			std::regex{"^<"}),
+		(OperatorLeq,			std::regex{"^<="}),
+		(OperatorGt,			std::regex{"^>"}),
+		(OperatorGeq,			std::regex{"^<="}),
+		(OperatorPlus,			std::regex{"^\\+"}),
+		(OperatorMinus,			std::regex{"^-"}),
+		(OperatorMul,			std::regex{"^\\*"}),
+		(OperatorDiv,			std::regex{"^/"}),
+		(OperatorIncrement,		std::regex{"^\\+\\+"}),
+		(OperatorDecrement,		std::regex{"^--"}),
+		(OperatorNegate,		std::regex{"^!"}),
 
-		(TokenType::StructureReference, std::regex{"^\\."}),
+		(StructureReference,	std::regex{"^\\."}),
 
-		(TokenType::ParenthesisOpen,	std::regex{"^\\("}),
-		(TokenType::ParenthesisClose,	std::regex{"^\\)"}),
-		(TokenType::BraceOpen,			std::regex{"^\\{"}),
-		(TokenType::BraceClose,			std::regex{"^\\}"}),
-		(TokenType::BracketOpen,		std::regex{"^\\["}),
-		(TokenType::BracketClose,		std::regex{"^\\]"}),
+		(ParenthesisOpen,		std::regex{"^\\("}),
+		(ParenthesisClose,		std::regex{"^\\)"}),
+		(BraceOpen,				std::regex{"^\\{"}),
+		(BraceClose,			std::regex{"^\\}"}),
+		(BracketOpen,			std::regex{"^\\["}),
+		(BracketClose,			std::regex{"^\\]"}),
 
-		(TokenType::Comma,				std::regex{"^,"}),
-		(TokenType::Semicolon,			std::regex{"^;"}),
+		(Comma,					std::regex{"^,"}),
+		(Semicolon,				std::regex{"^;"}),
 
-		(TokenType::CommentSingleLine,	std::regex{"^//[^\\n]*(?:\\n)?"}),
-		(TokenType::CommentMultiLine,	std::regex{"^/\\*(?:[^\\*]/|\\*[^/]|[^\\*/])*.?.?"})
+		(CommentSingleLine,		std::regex{"^//[^\\n]*(?:\\n)?"}),
+		(CommentMultiLine,		std::regex{"^/\\*(?:[^\\*]/|\\*[^/]|[^\\*/])*.?.?"})
 	};
 
 	return regexes;

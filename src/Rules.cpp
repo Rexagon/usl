@@ -22,7 +22,7 @@ app::Rules::Rules(const std::vector<RuleSet>& t) :
 {
 }
 
-void app::Rules::setName(const std::string& name)
+void app::Rules::setName(const size_t name)
 {
 	m_name = name;
 }

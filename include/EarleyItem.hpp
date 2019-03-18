@@ -14,7 +14,7 @@ namespace app
 			Null,
 		};
 
-		EarleyItem(std::string_view name, const RuleSet& set, size_t origin, size_t next = 0);
+		EarleyItem(size_t name, const RuleSet& set, size_t origin, size_t next = 0);
 
 		EarleyItem createAdvanced(size_t n) const;
 
@@ -29,7 +29,7 @@ namespace app
 		const Term* getNextTerm() const;
 		const NonTerm* getNextNonTerm() const;
 
-		std::string_view getName() const;
+		size_t getName() const;
 
 		size_t getOrigin() const;
 		size_t getNextPosition() const;
@@ -41,7 +41,7 @@ namespace app
 	private:
 		const RuleSet& m_set;
 
-		std::string_view m_name;
+		size_t m_name;
 		size_t m_origin = 0;
 		size_t m_next = 0;
 	};

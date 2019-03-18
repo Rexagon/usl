@@ -23,7 +23,7 @@ namespace app
 		Rules(const RuleSet& t);
 		Rules(const std::vector<RuleSet>& t);
 
-		void setName(const std::string& name);
+		void setName(size_t name);
 
 		std::vector<EarleyItem> generateEarleyItems(size_t begin) const;
 
@@ -35,7 +35,7 @@ namespace app
 		friend Rules operator|(const RuleSet& l, const RuleVariant& r);
 
 	private:
-		std::string m_name;
+		size_t m_name = -1;
 		std::vector<RuleSet> m_sets;
 	};
 
@@ -43,14 +43,14 @@ namespace app
 	{
 		bool operator==(const Term& other) const;
 
-		TokenType type;
+		size_t type;
 	};
 
 	struct NonTerm final
 	{
 		bool operator==(const NonTerm& other) const;
 
-		std::string name;
+		size_t name;
 	};
 
 	struct RuleSet final

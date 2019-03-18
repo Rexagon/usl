@@ -1,9 +1,8 @@
 #include "Parser.hpp"
 
 #include <stack>
-#include <functional>
 #include <chrono>
-#include <thread>
+#include <functional>
 
 app::Parser::Parser() :
 	m_grammar(ParserGrammar::create())
@@ -54,7 +53,7 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 	for (const auto& item : m_stateSets.back()) {
 		if (item.getNextType() == EarleyItem::NextType::Null &&
 			item.getOrigin() == 0 &&
-			item.getName() == ParserGrammar::STARTING_RULE)
+			item.getName() == parser_grammar::STARTING_RULE)
 		{
 			finalItem = &item;
 		}
@@ -114,6 +113,14 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 		}
 
 		for (const auto& item : completedItems[i]) {
+			if (stack.top()->value.first != nullptr &&
+				stack.top()->value.second < item.second) 
+			{
+				stack.pop();
+				auto last = std::move(stack.top()->children.back());
+				stack.top()->children = std::move(last->children);
+			}
+
 			auto node = std::make_unique<SyntaxNode>();
 			node->value = item;
 
@@ -146,10 +153,11 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 		}
 
 		if (node->value.first != nullptr) {
+			printf("(%zu) ", node->value.second);
 			node->value.first->print();
 		}
 		else if(node->token) {
-			printf("Term(%d)\n", node->token->first);
+			printf("Term(%zu)\n", node->token->first);
 		}
 
 		if (!node->children.empty()) {

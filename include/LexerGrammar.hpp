@@ -6,63 +6,65 @@
 
 namespace app
 {
-	enum class TokenType
-	{
-		KeywordLet,
-		KeywordIf,
-		KeywordElse,
-		KeywordWhile,
-		KeywordFor,
-		KeywordBreak,
-		KeywordContinue,
-		KeywordFunction,
-		KeywordReturn,
+	namespace lexer_grammar {
+		enum TokenType
+		{
+			KeywordLet,
+			KeywordIf,
+			KeywordElse,
+			KeywordWhile,
+			KeywordFor,
+			KeywordBreak,
+			KeywordContinue,
+			KeywordFunction,
+			KeywordReturn,
 
-		Identifier,
-		String,
-		Number,
+			Identifier,
+			String,
+			Number,
 
-		OperatorAssignment,
-		OperatorOr,
-		OperatorAnd,
-		OperatorEq,
-		OperatorNeq,
-		OperatorLt,
-		OperatorLeq,
-		OperatorGt,
-		OperatorGeq,
-		OperatorPlus,
-		OperatorMinus,
-		OperatorMul,
-		OperatorDiv,
-		OperatorIncrement,
-		OperatorDecrement,
-		OperatorNegate,
+			OperatorAssignment,
+			OperatorOr,
+			OperatorAnd,
+			OperatorEq,
+			OperatorNeq,
+			OperatorLt,
+			OperatorLeq,
+			OperatorGt,
+			OperatorGeq,
+			OperatorPlus,
+			OperatorMinus,
+			OperatorMul,
+			OperatorDiv,
+			OperatorIncrement,
+			OperatorDecrement,
+			OperatorNegate,
 
-		StructureReference,
+			StructureReference,
 
-		ParenthesisOpen,
-		ParenthesisClose,
-		BraceOpen,
-		BraceClose,
-		BracketOpen,
-		BracketClose,
+			ParenthesisOpen,
+			ParenthesisClose,
+			BraceOpen,
+			BraceClose,
+			BracketOpen,
+			BracketClose,
 
-		Comma,
-		Semicolon,
+			Comma,
+			Semicolon,
 
-		CommentSingleLine,
-		CommentMultiLine,
+			CommentSingleLine,
+			CommentMultiLine,
 
-		Invalid, // also used as count
-	};
+			Invalid, // also used as count
+		};
 
-	constexpr auto TOKEN_COUNT = static_cast<size_t>(TokenType::Invalid);
+		constexpr auto TOKEN_COUNT = Invalid;
+	}
 
-	using RegexArray = std::array<std::regex, TOKEN_COUNT>;
-	using RegexMask = std::bitset<TOKEN_COUNT>;
+	using RegexArray = std::array<std::regex, lexer_grammar::TOKEN_COUNT>;
+	using RegexMask = std::bitset<lexer_grammar::TOKEN_COUNT>;
 
-	using Token = std::pair<TokenType, std::string_view>;
+	using Token = std::pair<size_t, std::string_view>;
 
 	const RegexArray& buildRegexes();
 }
