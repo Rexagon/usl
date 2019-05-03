@@ -13,13 +13,12 @@ namespace app
 		{
 			DECL,
 			ASSIGN,
+			DEREF,
 
 			POP,
 
 			NOT,
 			UNM,
-			INC,
-			DEC,
 
 			ADD,
 			SUB,
@@ -46,6 +45,8 @@ namespace app
 		};
 
 		constexpr auto OPCODE_COUNT = Count;
+
+		const char* getString(size_t code);
 	}
 
 	using ByteCodeItem = std::variant<std::nullopt_t, bool, double, std::string, std::string_view, opcode::Code>;

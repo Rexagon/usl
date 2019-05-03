@@ -100,8 +100,8 @@ app::ParserGrammar::ParserGrammar()
 
 	m_rules[UnaryExpression] =
 		NonTerm{ PostfixExpression } << NotImportant{} |
-		Term{ OperatorIncrement } >> NonTerm{ UnaryExpression } << createSimpleTranslator(opcode::INC) |
-		Term{ OperatorDecrement } >> NonTerm{ UnaryExpression } << createSimpleTranslator(opcode::DEC) |
+		Term{ OperatorIncrement } >> NonTerm{ UnaryExpression } |
+		Term{ OperatorDecrement } >> NonTerm{ UnaryExpression } |
 		Term{ OperatorPlus } >> NonTerm{ UnaryExpression } << NotImportant{} |
 		Term{ OperatorMinus } >> NonTerm{ UnaryExpression } |
 		Term{ OperatorNegate } >> NonTerm{ UnaryExpression };

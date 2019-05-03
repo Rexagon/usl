@@ -13,9 +13,4 @@ while (i != 0) {
 	--i;
 }
 
-/* 
-Multi line comments
-And it works
-*/
-
 let test_after = test_function(test_number, 1);

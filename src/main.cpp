@@ -74,13 +74,13 @@ int main(const int argc, char** argv)
 		app::Lexer lexer;
 		const auto& tokens = lexer.run(text);
 
-		if (arguments.showLexerOutput) {
+		/*if (arguments.showLexerOutput) {
 			for (const auto& token : tokens) {
 				std::cout << "{ token: \"" << token.second << 
 					"\",\n  type: " << static_cast<size_t>(token.first) << 
 					" }\n\n";
 			}
-		}
+		}*/
 
 		// Parse tokens
 		app::Parser parser;

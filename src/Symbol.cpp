@@ -35,6 +35,24 @@ app::Symbol::Symbol(CoreFunction* value) :
 {
 }
 
+void app::Symbol::assign(bool value)
+{
+    m_data = value;
+    m_type = Type ::Bool;
+}
+
+void app::Symbol::assign(double value)
+{
+    m_data = value;
+    m_type = Type::Number;
+}
+
+void app::Symbol::assign(const std::string &value)
+{
+    m_data = value;
+    m_type = Type::String;
+}
+
 void app::Symbol::assign(Symbol* symbol)
 {
 	if (symbol == nullptr || symbol->m_type == Type::Null) {
@@ -68,7 +86,39 @@ void* app::Symbol::data()
 	return result;
 }
 
+const void* app::Symbol::data() const {
+    if (m_type == Type::Null) {
+        return nullptr;
+    }
+
+    const void* result = nullptr;
+    std::visit([&result](auto && arg) {
+        using T = std::decay_t<decltype(arg)>;
+
+        if constexpr (std::is_pointer_v<T>) {
+            result = reinterpret_cast<const void*>(arg);
+        }
+        else {
+            result = reinterpret_cast<const void*>(&arg);
+        }
+    }, m_data);
+
+    return result;
+}
+
 app::Symbol::Type app::Symbol::getType() const
 {
 	return m_type;
+}
+
+bool app::Symbol::canBeDereferenced() const {
+    switch (m_type) {
+    case Symbol::Type::Null:
+    case Symbol::Type::Bool:
+    case Symbol::Type::Number:
+    case Symbol::Type::String:
+        return true;
+    default:
+        return false;
+    }
 }

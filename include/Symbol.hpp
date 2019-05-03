@@ -45,11 +45,17 @@ namespace app
 		explicit Symbol(CoreObject* value);
 		explicit Symbol(CoreFunction* value);
 
+		void assign(bool value);
+		void assign(double value);
+		void assign(const std::string& value);
 		void assign(Symbol* symbol);
 
 		void* data();
+		const void* data() const;
 
 		Type getType() const;
+
+		bool canBeDereferenced() const;
 
 	protected:
 		Type m_type;
