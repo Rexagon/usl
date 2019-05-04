@@ -53,3 +53,26 @@ const char* app::opcode::getString(size_t code)
         return "Unknown";
     }
 }
+
+void app::print(const app::StackItem& item)
+{
+    std::visit([](auto&& arg) {
+        using T = std::decay_t<decltype(arg)>;
+
+        if constexpr (std::is_same_v<T, std::nullopt_t>) {
+            printf("null");
+        }
+        else if constexpr (std::is_same_v<T, bool>) {
+            printf("bool: %s", arg ? "true" : "false");
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            printf("number: %f", arg);
+        }
+        else if constexpr (std::is_same_v<T, std::string>) {
+            printf("string: '%s'", arg.c_str());
+        }
+        else if constexpr (std::is_same_v<T, std::string_view>) {
+            printf("var: %s", std::string(arg).c_str());
+        }
+    }, item);
+}

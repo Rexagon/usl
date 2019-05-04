@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stack>
+#include <stdexcept>
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -26,9 +28,35 @@ namespace app
 
 		Symbol& findVariable(std::string_view name);
 
+        template<typename F>
+        void deref(F&& f, StackItem& item) {
+            std::visit([this, &f](auto&& arg) {
+                using T = std::decay_t<decltype(arg)>;
+
+                if constexpr (dereferencable<T>) {
+                    f(arg);
+                }
+                else if constexpr (std::is_same_v<T, std::string_view>) {
+                    findVariable(arg).deref(f);
+                }
+            }, item);
+        }
+
+        template<typename F>
+        void deref(F&& f, StackItem& argLeft, StackItem& argRight)
+        {
+            deref([this, &f, &argRight](auto&& argL) {
+                deref([&f, &argL](auto&& argR) {
+                    f(argL, argR);
+                }, argRight);
+            }, argLeft);
+        }
+
+        void printStack();
+
 		std::vector<std::unordered_set<std::string_view>> m_blocks;
 		std::unordered_map<std::string_view, Symbol> m_variables;
 
-		std::stack<StackItem> m_stack;
+		std::vector<StackItem> m_stack;
 	};
 }

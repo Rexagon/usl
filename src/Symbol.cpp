@@ -65,47 +65,6 @@ void app::Symbol::assign(Symbol* symbol)
 	m_type = symbol->m_type;
 }
 
-void* app::Symbol::data()
-{
-	if (m_type == Type::Null) {
-		return nullptr;
-	}
-
-	void* result = nullptr;
-	std::visit([&result](auto && arg) {
-		using T = std::decay_t<decltype(arg)>;
-
-		if constexpr (std::is_pointer_v<T>) {
-			result = reinterpret_cast<void*>(arg);
-		}
-		else {
-			result = reinterpret_cast<void*>(&arg);
-		}
-	}, m_data);
-
-	return result;
-}
-
-const void* app::Symbol::data() const {
-    if (m_type == Type::Null) {
-        return nullptr;
-    }
-
-    const void* result = nullptr;
-    std::visit([&result](auto && arg) {
-        using T = std::decay_t<decltype(arg)>;
-
-        if constexpr (std::is_pointer_v<T>) {
-            result = reinterpret_cast<const void*>(arg);
-        }
-        else {
-            result = reinterpret_cast<const void*>(&arg);
-        }
-    }, m_data);
-
-    return result;
-}
-
 app::Symbol::Type app::Symbol::getType() const
 {
 	return m_type;

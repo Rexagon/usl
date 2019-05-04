@@ -50,8 +50,32 @@ namespace app
 		void assign(const std::string& value);
 		void assign(Symbol* symbol);
 
-		void* data();
-		const void* data() const;
+        template<typename Callable>
+        void visit(Callable&& f) const
+        {
+            std::visit(f, m_data);
+        }
+
+        template<typename Callable>
+        void visit(Callable&& f) { const_cast<const Symbol*>(this)->visit(f); }
+
+        template<typename Callable>
+        void deref(Callable&& f) const
+        {
+            std::visit([&f](auto&& arg) -> void {
+                using T = std::decay_t<decltype(arg)>;
+
+                if constexpr (dereferencable<T>) {
+                    f(arg);
+                }
+                else {
+                    throw std::runtime_error("Unable to dereference variable");
+                }
+            }, m_data);
+        }
+
+        template<typename Callable>
+        void deref(Callable&& f) { const_cast<const Symbol*>(this)->deref(f); }
 
 		Type getType() const;
 

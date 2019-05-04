@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <Evaluator.hpp>
 
 #include "Lexer.hpp"
 #include "Parser.hpp"
@@ -85,9 +86,28 @@ int main(const int argc, char** argv)
 		// Parse tokens
 		app::Parser parser;
 		parser.parse(tokens);
+
+        app::Evaluator evaluator;
+        evaluator.eval({
+           std::string_view{"test_var"},
+           app::opcode::DECL,
+           std::string_view{"test_var"},
+           123.0,
+           10.0,
+           app::opcode::ADD,
+           app::opcode::ASSIGN,
+           std::string_view{"test_var"},
+           10.0,
+           std::string_view{"test_var"},
+           app::opcode::MUL,
+           app::opcode::ASSIGN,
+           std::string_view{"test_var"},
+           app::opcode::DEREF,
+           app::opcode::POP
+       });
 	}
 	catch (const std::runtime_error& e) {
-		std::cerr << e.what() << std::endl;
+		std::cout << "ERR: " << e.what() << std::endl;
 		return 1;
 	}
     
