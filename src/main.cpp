@@ -89,6 +89,7 @@ int main(const int argc, char** argv)
 
         app::Evaluator evaluator;
 		evaluator.eval({
+			app::opcode::DEFBLOCK,
 			std::string_view{"test_var"},
 			app::opcode::DECL,
 			std::string_view{"test_var"},
@@ -109,6 +110,9 @@ int main(const int argc, char** argv)
 			app::opcode::EQ,
 			false,
 			app::opcode::AND,
+			app::opcode::DELBLOCK,
+			std::string_view{"test_var"},
+			app::opcode::DEREF,
        });
 	}
 	catch (const std::runtime_error& e) {

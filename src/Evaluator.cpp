@@ -71,8 +71,8 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 				case opcode::DEFBLOCK:
 				case opcode::DELBLOCK:
 					handleBlocks(bytecode, position, arg);
+					break;
 
-				case opcode::Count:
 				default:
 					throw std::runtime_error("Unknown opcode");
 				}
@@ -391,7 +391,22 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 
 void app::Evaluator::handleBlocks(const ByteCode& bytecode, size_t& position, opcode::Code op)
 {
-	//TODO: implement scope block definition and deletion
+	if (op == opcode::DEFBLOCK) {
+		m_blocks.emplace_back();
+	}
+	else if (op == opcode::DELBLOCK) {
+		if (m_blocks.empty()) {
+			throw std::runtime_error("Unable to delete scope block");
+		}
+
+		for (const auto& var : m_blocks.back()) {
+			m_variables.erase(var);
+		}
+
+		m_blocks.pop_back();
+	}
+
+	++position;
 }
 
 app::Symbol &app::Evaluator::findVariable(std::string_view name)
