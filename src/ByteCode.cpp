@@ -1,6 +1,6 @@
 #include "ByteCode.hpp"
 
-const char* app::opcode::getString(size_t code)
+const char* app::opcode::toString(size_t code)
 {
     switch (code) {
     case DECL:
@@ -39,6 +39,8 @@ const char* app::opcode::getString(size_t code)
         return "GT";
     case GE:
         return "GE";
+	case IF:
+		return "IF";
     case JMP:
         return "JMP";
     case CALL:

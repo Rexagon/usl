@@ -1,7 +1,5 @@
 #include "Evaluator.hpp"
 
-#include <cassert>
-
 void app::Evaluator::eval(const ByteCode& bytecode)
 {
 	if (bytecode.empty()) {
@@ -20,7 +18,13 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 			using T = std::decay_t<decltype(arg)>;
 
 			if constexpr (!std::is_same_v<T, opcode::Code>) {
-				m_stack.push_back(arg);
+				if constexpr (std::is_same_v<T, Pointer>) {
+					m_pointerStack.push(arg);
+				}
+				else {
+					m_stack.push_back(arg);					
+				}
+
                 ++position;
 				return;
 			}
@@ -62,6 +66,7 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 					handleBinaryOperator(bytecode, position, arg);
 					break;
 
+				case opcode::IF:
 				case opcode::JMP:
 				case opcode::CALL:
 				case opcode::RET:
@@ -175,7 +180,7 @@ void app::Evaluator::handlePop(const ByteCode& bytecode, size_t& position)
 void app::Evaluator::handleUnaryOperator(const app::ByteCode& bytecode, size_t& position, app::opcode::Code op)
 {
     if (m_stack.empty()) {
-        throw std::runtime_error("Unable to read " + std::string(opcode::getString(op)) + " argument. Stack is empty");
+        throw std::runtime_error("Unable to read " + std::string(toString(op)) + " argument. Stack is empty");
     }
 
     auto& value = m_stack.back();
@@ -238,7 +243,7 @@ void app::Evaluator::handleUnaryOperator(const app::ByteCode& bytecode, size_t& 
 void app::Evaluator::handleBinaryOperator(const app::ByteCode& bytecode, size_t& position, app::opcode::Code op)
 {
     if (m_stack.size() < 2) {
-        throw std::runtime_error("Unable to read " + std::string(opcode::getString(op)) +
+        throw std::runtime_error("Unable to read " + std::string(opcode::toString(op)) +
             " arguments. Stack size is less then 2");
     }
 
@@ -288,7 +293,7 @@ void app::Evaluator::handleBinaryOperator(const app::ByteCode& bytecode, size_t&
             }
         }
 
-        throw std::runtime_error(std::string(opcode::getString(static_cast<opcode::Code>(op))) +
+        throw std::runtime_error(std::string(opcode::toString(static_cast<opcode::Code>(op))) +
                                  " is undefined for that argument types");
     };
 
@@ -358,7 +363,7 @@ void app::Evaluator::handleBinaryOperator(const app::ByteCode& bytecode, size_t&
             }
         }
 
-        throw std::runtime_error(std::string(opcode::getString(static_cast<opcode::Code>(op))) +
+        throw std::runtime_error(std::string(opcode::toString(static_cast<opcode::Code>(op))) +
                                  " is undefined for that argument types");
     };
 
@@ -386,7 +391,68 @@ void app::Evaluator::handleBinaryOperator(const app::ByteCode& bytecode, size_t&
 
 void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, opcode::Code op)
 {
-	//TODO: implement evaluation control functions
+	const auto opIf = [this, &position]() {
+		if (m_stack.empty()) {
+			throw std::runtime_error("Unable to read IF arguments. Stack is empty");
+		}
+		if (m_pointerStack.size() < 2) {
+			throw std::runtime_error("Unable to read IF arguments. "
+				"Pointer stack size is less then 2");
+		}
+
+		const auto value = std::get_if<bool>(&m_stack.back());
+		if (value == nullptr) {
+			throw std::runtime_error("Unable to read IF arguments. Invalid argument type");
+		}
+
+		const auto falsePointer = m_pointerStack.top();
+		m_pointerStack.pop();
+
+		const auto truePointer = m_pointerStack.top();
+		m_pointerStack.pop();
+
+		position = *value ? truePointer : falsePointer;
+	};
+
+	const auto opJmp = [this, &position](opcode::Code op) {
+		if (m_pointerStack.empty()) {
+			throw std::runtime_error("Unable to read " + std::string(toString(op)) + " arguments. "
+				"Pointer stack is empty");
+		}
+
+		const auto pointer = m_pointerStack.top();
+		m_pointerStack.pop();
+
+		position = pointer;
+	};
+
+	const auto opCall = [this, &position]() {
+		if (m_pointerStack.empty()) {
+			throw std::runtime_error("Unable to read CALL arguments. "
+				"Pointer stack is empty");
+		}
+
+		const auto pointer = m_pointerStack.top();
+		m_pointerStack.pop();
+
+		m_pointerStack.push(position + 1);
+		position = pointer;
+	};
+
+	switch (op) {
+	case opcode::IF:
+		opIf();
+		return;
+	case opcode::JMP:
+	case opcode::RET:
+		opJmp(op);
+		return;
+	case opcode::CALL:
+		opCall();
+		return;
+	default:
+		break;
+	}
 }
 
 void app::Evaluator::handleBlocks(const ByteCode& bytecode, size_t& position, opcode::Code op)

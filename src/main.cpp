@@ -89,30 +89,14 @@ int main(const int argc, char** argv)
 
         app::Evaluator evaluator;
 		evaluator.eval({
-			app::opcode::DEFBLOCK,
-			std::string_view{"test_var"},
-			app::opcode::DECL,
-			std::string_view{"test_var"},
-			123.0,
-			10.0,
-			app::opcode::ADD,
-			app::opcode::ASSIGN,
-			std::string_view{"test_var"},
-			10.0,
-			std::string_view{"test_var"},
-			app::opcode::MUL,
-			app::opcode::ASSIGN,
-			std::string_view{"test_var"},
-			app::opcode::DEREF,
-			std::string{""},
-			app::opcode::ADD,
-			std::string{"1330.000000"},
+			std::string{"TEST"},
+			std::string{"ASD"},
 			app::opcode::EQ,
-			false,
-			app::opcode::AND,
-			app::opcode::DELBLOCK,
-			std::string_view{"test_var"},
-			app::opcode::DEREF,
+			size_t{6},
+			size_t{7},
+			app::opcode::IF,
+			std::string{"Inside if"},
+			std::string{"Other"},
        });
 	}
 	catch (const std::runtime_error& e) {

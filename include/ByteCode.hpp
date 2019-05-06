@@ -19,35 +19,36 @@ namespace app
 	{
 		enum Code
 		{
-			DECL,
-			ASSIGN,
-			DEREF,
+			DECL,		// var, DECL ->
+			ASSIGN,		// var, val/var, ASSIGN ->
+			DEREF,		// val/var, DEREF -> val
 
-			POP,
+			POP,		// POP ->
 
-			NOT,
-			UNM,
+			NOT,		// val/var, NOT -> val
+			UNM,		// val/var, UNM -> val
 
-			ADD,
-			SUB,
-			MUL,
-			DIV,
+			ADD,		// val/var, val/var, ADD -> val
+			SUB,		// val/var, val/var, SUB -> val
+			MUL,		// val/var, val/var, MUL -> val
+			DIV,		// val/var, val/var, DIV -> val
 
-			AND,
-			OR,
-			EQ,
-			NEQ,
-			LT,
-			LE,
-			GT,
-			GE,
+			AND,		// val/var, val/var, AND -> val
+			OR,			// val/var, val/var, OR -> val
+			EQ,			// val/var, val/var, EQ -> val
+			NEQ,		// val/var, val/var, NEQ -> val
+			LT,			// val/var, val/var, LT -> val
+			LE,			// val/var, val/var, LE -> val
+			GT,			// val/var, val/var, GT -> val
+			GE,			// val/var, val/var, GE -> val
 
-			JMP,
-			CALL,
-			RET,
+			IF,			// bool, ptr (if true), ptr (if false), IF ->
+			JMP,		// ptr, JMP ->
+			CALL,		// ptr, CALL -> [push current ptr]
+			RET,		// RET -> [pop current ptr]
 
-			DEFBLOCK,
-			DELBLOCK,
+			DEFBLOCK,	// DEFBLOCK ->
+			DELBLOCK,	// DELBLOCK ->
 
 			Count,
 		};
@@ -64,10 +65,17 @@ namespace app
 			return (op >= AND) && (op <= GE);
 		}
 
-		const char* getString(size_t code);
+		constexpr bool isControlOp(Code op)
+		{
+			return (op >= IF) && (op <= RET);
+		}
+
+		const char* toString(size_t code);
 	}
 
-	using ByteCodeItem = std::variant<std::nullopt_t, bool, double, std::string, std::string_view, opcode::Code>;
+	using Pointer = size_t;
+
+	using ByteCodeItem = std::variant<std::nullopt_t, bool, double, std::string, std::string_view, opcode::Code, Pointer>;
 	using StackItem = std::variant<std::nullopt_t, bool, double, std::string, std::string_view>;
 
 	void print(const StackItem& item);
