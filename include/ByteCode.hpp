@@ -54,6 +54,16 @@ namespace app
 
 		constexpr auto OPCODE_COUNT = Count;
 
+		constexpr bool isMathOp(app::opcode::Code op)
+		{
+			return (op >= ADD) && (op <= DIV);
+		}
+
+		constexpr bool isBoolOp(app::opcode::Code op)
+		{
+			return (op >= AND) && (op <= GE);
+		}
+
 		const char* getString(size_t code);
 	}
 

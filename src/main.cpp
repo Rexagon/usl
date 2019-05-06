@@ -88,22 +88,27 @@ int main(const int argc, char** argv)
 		parser.parse(tokens);
 
         app::Evaluator evaluator;
-        evaluator.eval({
-           std::string_view{"test_var"},
-           app::opcode::DECL,
-           std::string_view{"test_var"},
-           123.0,
-           10.0,
-           app::opcode::ADD,
-           app::opcode::ASSIGN,
-           std::string_view{"test_var"},
-           10.0,
-           std::string_view{"test_var"},
-           app::opcode::MUL,
-           app::opcode::ASSIGN,
-           std::string_view{"test_var"},
-           app::opcode::DEREF,
-           app::opcode::POP
+		evaluator.eval({
+			std::string_view{"test_var"},
+			app::opcode::DECL,
+			std::string_view{"test_var"},
+			123.0,
+			10.0,
+			app::opcode::ADD,
+			app::opcode::ASSIGN,
+			std::string_view{"test_var"},
+			10.0,
+			std::string_view{"test_var"},
+			app::opcode::MUL,
+			app::opcode::ASSIGN,
+			std::string_view{"test_var"},
+			app::opcode::DEREF,
+			std::string{""},
+			app::opcode::ADD,
+			std::string{"1330.000000"},
+			app::opcode::EQ,
+			false,
+			app::opcode::AND,
        });
 	}
 	catch (const std::runtime_error& e) {

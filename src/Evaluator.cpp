@@ -44,25 +44,22 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 
 				case opcode::NOT:
 				case opcode::UNM:
-					handleUnary(bytecode, position, arg);
+					handleUnaryOperator(bytecode, position, arg);
 					break;
 
 				case opcode::ADD:
 				case opcode::SUB:
 				case opcode::MUL:
 				case opcode::DIV:
-					handleBinaryMath(bytecode, position, arg);
-					break;
-
-				case opcode::AND:
-				case opcode::OR:
-				case opcode::EQ:
-				case opcode::NEQ:
-				case opcode::LT:
-				case opcode::LE:
-				case opcode::GT:
-				case opcode::GE:
-					handleBinaryLogic(bytecode, position, arg);
+                case opcode::AND:
+                case opcode::OR:
+                case opcode::EQ:
+                case opcode::NEQ:
+                case opcode::LT:
+                case opcode::LE:
+                case opcode::GT:
+                case opcode::GE:
+					handleBinaryOperator(bytecode, position, arg);
 					break;
 
 				case opcode::JMP:
@@ -175,7 +172,7 @@ void app::Evaluator::handlePop(const ByteCode& bytecode, size_t& position)
 	++position;
 }
 
-void app::Evaluator::handleUnary(const ByteCode& bytecode, size_t& position, opcode::Code op)
+void app::Evaluator::handleUnaryOperator(const app::ByteCode& bytecode, size_t& position, app::opcode::Code op)
 {
     if (m_stack.empty()) {
         throw std::runtime_error("Unable to read " + std::string(opcode::getString(op)) + " argument. Stack is empty");
@@ -238,7 +235,7 @@ void app::Evaluator::handleUnary(const ByteCode& bytecode, size_t& position, opc
     ++position;
 }
 
-void app::Evaluator::handleBinaryMath(const ByteCode& bytecode, size_t& position, opcode::Code op)
+void app::Evaluator::handleBinaryOperator(const app::ByteCode& bytecode, size_t& position, app::opcode::Code op)
 {
     if (m_stack.size() < 2) {
         throw std::runtime_error("Unable to read " + std::string(opcode::getString(op)) +
@@ -267,69 +264,124 @@ void app::Evaluator::handleBinaryMath(const ByteCode& bytecode, size_t& position
         }
     };
 
-    const auto opAdd = [&toString](auto&& argLeft, auto&& argRight) -> std::conditional_t<
-        std::is_same_v<std::decay_t<decltype(argLeft)>, double> &&
-                std::is_same_v<std::decay_t<decltype(argRight)>, double>,
-        double,
-        std::string
-    > {
-        using Tl = std::decay_t<decltype(argLeft)>;
-        using Tr = std::decay_t<decltype(argRight)>;
-
-        if constexpr (std::is_same_v<Tl, double>) {
-            if constexpr (std::is_same_v<Tr, double>) {
-                return argLeft + argRight;
-            }
-            else if constexpr (std::is_same_v<Tr, std::string>) {
-                return toString(argLeft) + argRight;
-            }
-        }
-        if constexpr (std::is_same_v<Tl, std::string>) {
-            return argLeft + toString(argRight);
-        }
-
-        throw std::runtime_error("AND is undefined for that argument types");
+    enum class MathOp {
+        ADD = opcode::ADD,
+        SUB = opcode::SUB,
+        MUL = opcode::MUL,
+        DIV = opcode::DIV
     };
 
-    enum class CurrentOp {
-        Sub = opcode::SUB,
-        Mul = opcode::MUL,
-        Div = opcode::DIV
-    };
-
-    const auto opSubMulDiv = [&toString](auto&& argLeft, auto&& argRight, CurrentOp op) -> double {
+    const auto mathOp = [](auto&& argLeft, auto&& argRight, MathOp op) -> double {
         using Tl = std::decay_t<decltype(argLeft)>;
         using Tr = std::decay_t<decltype(argRight)>;
 
         if constexpr (std::is_same_v<Tl, double> && std::is_same_v<Tr, double>) {
             switch (op) {
-            case CurrentOp::Sub:
+            case MathOp::ADD:
+                return argLeft + argRight;
+            case MathOp::SUB:
                 return argLeft - argRight;
-            case CurrentOp::Mul:
+            case MathOp::MUL:
                 return argLeft * argRight;
-            case CurrentOp::Div:
+            case MathOp::DIV:
                 return argLeft / argRight;
             }
         }
 
-        throw std::runtime_error("SUB is undefined for that argument types");
+        throw std::runtime_error(std::string(opcode::getString(static_cast<opcode::Code>(op))) +
+                                 " is undefined for that argument types");
     };
 
-    deref([&valueLeft, &op, &opAdd, &opSubMulDiv](auto&& argLeft, auto&& argRight) {
-        if (op == opcode::ADD) {
-            valueLeft = opAdd(argLeft, argRight);
+    enum class BoolOp {
+        AND = opcode::AND,
+        OR = opcode::OR,
+        EQ = opcode::EQ,
+        NEQ = opcode::NEQ,
+        LT = opcode::LT,
+        LE = opcode::LE,
+        GT = opcode::GT,
+        GE = opcode::GE
+    };
+
+    const auto boolOp = [](auto&& argLeft, auto&& argRight, BoolOp op) -> bool {
+        using Tl = std::decay_t<decltype(argLeft)>;
+        using Tr = std::decay_t<decltype(argRight)>;
+
+        if constexpr (std::is_same_v<Tl, bool> && std::is_same_v<Tr, bool>) {
+            switch (op) {
+            case BoolOp::AND:
+                return argLeft && argRight;
+            case BoolOp::OR:
+                return argLeft || argRight;
+            default:
+                break;
+            }
+        }
+
+        if constexpr (std::is_same_v<Tl, std::nullopt_t> && std::is_same_v<Tr, std::nullopt_t>) {
+            switch (op) {
+            case BoolOp::EQ:
+            case BoolOp::LE:
+            case BoolOp::GE:
+                return true;
+            case BoolOp::NEQ:
+            case BoolOp::LT:
+            case BoolOp::GT:
+                return false;
+            default:
+                break;
+            }
+        }
+
+
+        if constexpr ((details::is_any_of_v<Tl, bool, double> && details::is_any_of_v<Tr, bool, double>) ||
+                (std::is_same_v<Tl, std::string> && details::is_any_of_v<Tr, std::string>))
+        {
+			using LType = std::conditional_t<details::is_any_of_v<Tl, bool, double>, double, std::string>;
+			using RType = std::conditional_t<details::is_any_of_v<Tr, bool, double>, double, std::string>;
+
+            switch (op) {
+            case BoolOp::EQ:
+                return static_cast<LType>(argLeft) == static_cast<RType>(argRight);
+            case BoolOp::NEQ:
+                return static_cast<LType>(argLeft) != static_cast<RType>(argRight);
+            case BoolOp::LT:
+                return static_cast<LType>(argLeft) < static_cast<RType>(argRight);
+            case BoolOp::LE:
+                return static_cast<LType>(argLeft) <= static_cast<RType>(argRight);
+            case BoolOp::GT:
+                return static_cast<LType>(argLeft) > static_cast<RType>(argRight);
+            case BoolOp::GE:
+                return static_cast<LType>(argLeft) >= static_cast<RType>(argRight);
+            default:
+                break;
+            }
+        }
+
+        throw std::runtime_error(std::string(opcode::getString(static_cast<opcode::Code>(op))) +
+                                 " is undefined for that argument types");
+    };
+
+    deref([&valueLeft, &op, &toString, &mathOp, &boolOp](auto&& argLeft, auto&& argRight) {
+        using Tl = std::decay_t<decltype(argLeft)>;
+        using Tr = std::decay_t<decltype(argRight)>;
+
+        if (opcode::isMathOp(op)) {
+            if constexpr (std::is_same_v<Tl, std::string> || std::is_same_v<Tr, std::string>) {
+                if (op == opcode::ADD) {
+                    valueLeft = toString(argLeft) + toString(argRight);
+                    return;
+                }
+            }
+
+            valueLeft = mathOp(argLeft, argRight, static_cast<MathOp>(op));
         }
         else {
-            valueLeft = opSubMulDiv(argLeft, argRight, static_cast<CurrentOp>(op));
+            valueLeft = boolOp(argLeft, argRight, static_cast<BoolOp>(op));
         }
     }, valueLeft, valueRight);
 
     ++position;
-}
-
-void app::Evaluator::handleBinaryLogic(const ByteCode& bytecode, size_t& position, opcode::Code op)
-{
-	//TODO: implement binary boolean operations
 }
 
 void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, opcode::Code op)
