@@ -4,6 +4,8 @@
 #include <chrono>
 #include <functional>
 
+#include "ByteCode.hpp"
+
 app::Parser::Parser() :
 	m_grammar(ParserGrammar::create())
 {
@@ -105,10 +107,19 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 	std::stack<SyntaxNode*> stack;
 	stack.push(&root);
 
+	ByteCode byteCode;
+	byteCode.reserve(tokens.size());
+
 	for (size_t i = 0; i < tokens.size(); ++i) {
 		while (stack.top()->value.first != nullptr &&
 			i >= stack.top()->value.second)
 		{
+			const auto& translator = stack.top()->value.first->getRuleSet().translator;
+
+			if (translator) {
+				translator->func(byteCode, stack.top()->value.first->getOrigin());
+			}
+
 			stack.pop();
 		}
 
@@ -132,10 +143,41 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 
 		auto leaf = std::make_unique<SyntaxNode>();
 		leaf->token = &tokens[i];
+
+		if (lexer_grammar::isValue(tokens[i].first)) {
+			byteCode.emplace_back(convert(tokens[i]));
+		}
+
 		stack.top()->children.emplace_back(std::move(leaf));
 	}
 
 	const auto AFTER = std::chrono::high_resolution_clock::now();
+
+	for (const auto& item : byteCode) {
+		std::visit([](auto&& arg) {
+			using T = std::decay_t<decltype(arg)>;
+
+			if constexpr (std::is_same_v<T, std::nullopt_t>) {
+				printf("Null ");
+			}
+			else if constexpr (std::is_same_v<T, bool>) {
+				printf("Bool(%d) ", arg);
+			}
+			else if constexpr (std::is_same_v<T, double>) {
+				printf("Num(%f) ", arg);
+			}
+			else if constexpr (std::is_same_v<T, std::string>) {
+				printf("Str(%s) ", arg.c_str());
+			}
+			else if constexpr(std::is_same_v<T, std::string_view>) {
+				const std::string temp(static_cast<std::string_view>(arg));
+				printf("Id(%s) ", temp.c_str());
+			}
+			else if constexpr(std::is_same_v<T, opcode::Code>) {
+				printf("Op(%d) ", arg);
+			}
+		}, item);
+	}
 
 	using MilliDuration = std::chrono::duration<double, std::milli>;
 	printf("AST generated in %f ms\n", std::chrono::duration_cast<MilliDuration>(AFTER - BEFORE).count());

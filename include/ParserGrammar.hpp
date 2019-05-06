@@ -46,6 +46,13 @@ namespace app
 		constexpr auto STARTING_RULE = Program;
 
 		const char* getString(size_t name);
+
+		inline Translator createSimpleTranslator(const opcode::Code op)
+		{
+			return Translator{ [op](ByteCode & b, size_t) {
+				b.emplace_back(op);
+			}, 0 };
+		}
 	}
 
 	class ParserGrammar final

@@ -3,6 +3,7 @@
 #include <bitset>
 
 #include "Position.hpp"
+#include <iostream>
 
 app::Lexer::Lexer() :
 	m_regexes(buildRegexes())
@@ -45,10 +46,12 @@ std::vector<app::Token> app::Lexer::run(std::string_view text) const
 				}
 			}
 
-			if (tokenType != lexer_grammar::Invalid &&
-				tokenType != lexer_grammar::CommentSingleLine &&
-				tokenType != lexer_grammar::CommentMultiLine)
-			{
+			const auto token = Token{ tokenType, Position::toString(begin, end) };
+			std::cout << "{ token: \"" << token.second <<
+				"\",\n  type: " << static_cast<size_t>(token.first) <<
+				" }\n\n";
+
+			if (!lexer_grammar::isUseless(tokenType)) {
 				result.emplace_back(tokenType, Position::toString(begin, end));
 			}
 

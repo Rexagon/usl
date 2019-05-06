@@ -1,5 +1,8 @@
 #include "LexerGrammar.hpp"
 
+#include <cassert>
+#include <charconv>
+
 using namespace app::lexer_grammar;
 
 const app::RegexArray& app::buildRegexes()
@@ -15,6 +18,8 @@ const app::RegexArray& app::buildRegexes()
 		(KeywordFunction,		std::regex{"^function"}),
 		(KeywordReturn,			std::regex{"^return"}),
 
+		(Null,					std::regex{"^null"}),
+		(Boolean,				std::regex{"^(?:true)|(?:false)"}),
 		(Identifier,			std::regex{"^[a-zA-Z_]+"}),
 		(String,				std::regex{"^\"(?:\\\\.|[^\"])*\"?"}),
 		(Number,				std::regex{"^[0-9]+\\.?[0-9]*"}),
@@ -53,4 +58,45 @@ const app::RegexArray& app::buildRegexes()
 	};
 
 	return regexes;
+}
+
+app::ByteCodeItem app::convert(const Token& token)
+{
+	assert(isValue(token.first));
+
+	switch (token.first) {
+	case Boolean:
+		return token.second == "true";
+
+	case Identifier:
+		return token.second;
+
+	case String:
+	{
+		const auto* begin = &*token.second.begin();
+		auto size = token.second.size();
+
+		if (*begin == '\"') {
+			++begin;
+			--size;
+		}
+
+		if (size > 0 && *(begin + size - 1) == '\"') {
+			--size;
+		}
+
+		return std::string(std::string_view{begin, size});
+	}
+
+	case Number:
+	{
+		auto result = 0.0;
+		const auto ret = std::from_chars(&*token.second.begin(), &*token.second.end(), result);
+		return result;
+	}
+
+	case Null:
+	default:
+		return std::nullopt;
+	}
 }

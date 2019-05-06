@@ -4,6 +4,8 @@
 #include <regex>
 #include <bitset>
 
+#include "ByteCode.hpp"
+
 namespace app
 {
 	namespace lexer_grammar {
@@ -19,6 +21,8 @@ namespace app
 			KeywordFunction,
 			KeywordReturn,
 
+			Null,
+			Boolean,
 			Identifier,
 			String,
 			Number,
@@ -59,6 +63,24 @@ namespace app
 		};
 
 		constexpr auto TOKEN_COUNT = Invalid;
+
+		constexpr bool isValue(const size_t type)
+		{
+			return
+				type == Null ||
+				type == Boolean ||
+				type == Identifier ||
+				type == String ||
+				type == Number;
+		}
+
+		constexpr bool isUseless(const size_t type)
+		{
+			return
+				type == CommentSingleLine ||
+				type == CommentMultiLine ||
+				type == Invalid;
+		}
 	}
 
 	using RegexArray = std::array<std::regex, lexer_grammar::TOKEN_COUNT>;
@@ -67,4 +89,6 @@ namespace app
 	using Token = std::pair<size_t, std::string_view>;
 
 	const RegexArray& buildRegexes();
+
+	ByteCodeItem convert(const Token& token);
 }

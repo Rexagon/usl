@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <Evaluator.hpp>
 
 #include "Lexer.hpp"
 #include "Parser.hpp"
@@ -74,20 +75,32 @@ int main(const int argc, char** argv)
 		app::Lexer lexer;
 		const auto& tokens = lexer.run(text);
 
-		if (arguments.showLexerOutput) {
+		/*if (arguments.showLexerOutput) {
 			for (const auto& token : tokens) {
 				std::cout << "{ token: \"" << token.second << 
 					"\",\n  type: " << static_cast<size_t>(token.first) << 
 					" }\n\n";
 			}
-		}
+		}*/
 
 		// Parse tokens
 		app::Parser parser;
 		parser.parse(tokens);
+
+        app::Evaluator evaluator;
+		evaluator.eval({
+			std::string{"TEST"},
+			std::string{"ASD"},
+			app::opcode::EQ,
+			size_t{6},
+			size_t{7},
+			app::opcode::IF,
+			std::string{"Inside if"},
+			std::string{"Other"},
+       });
 	}
 	catch (const std::runtime_error& e) {
-		std::cerr << e.what() << std::endl;
+		std::cout << "ERR: " << e.what() << std::endl;
 		return 1;
 	}
     

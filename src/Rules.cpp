@@ -119,17 +119,17 @@ app::RuleSet app::operator>>(const RuleVariant& l, const RuleVariant& r)
 	return result;
 }
 
-app::RuleSet app::operator<<(const RuleSet& l, const bool important)
+app::RuleSet app::operator<<(const RuleSet& l, const Translator& translator)
 {
 	auto result{ l };
-	result.isImportant = important;
+	result.translator = translator;
 	return result;
 }
 
-app::RuleSet app::operator<<(const RuleVariant& l, const bool important)
+app::RuleSet app::operator<<(const RuleVariant& l, const Translator& translator)
 {
 	RuleSet result;
 	result.rules = { l };
-	result.isImportant = important;
+	result.translator = translator;
 	return result;
 }
