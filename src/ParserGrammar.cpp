@@ -115,6 +115,7 @@ app::ParserGrammar::ParserGrammar()
 
 	m_rules[PrimaryExpression] =
 		Term{ Identifier } |
+        Term{ Boolean } |
 		Term{ Number } |
 		Term{ String } |
 		Term{ ParenthesisOpen } >> NonTerm{ Expression } >> Term{ ParenthesisClose };
