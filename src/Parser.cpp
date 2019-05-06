@@ -114,12 +114,6 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 		while (stack.top()->value.first != nullptr &&
 			i >= stack.top()->value.second)
 		{
-			const auto& translator = stack.top()->value.first->getRuleSet().translator;
-
-			if (translator) {
-				translator->func(byteCode, stack.top()->value.first->getOrigin());
-			}
-
 			stack.pop();
 		}
 

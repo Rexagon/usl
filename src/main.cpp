@@ -97,7 +97,7 @@ int main(const int argc, char** argv)
 			app::opcode::IF,
 			std::string{"Inside if"},
 			std::string{"Other"},
-       });
+		});
 	}
 	catch (const std::runtime_error& e) {
 		std::cout << "ERR: " << e.what() << std::endl;

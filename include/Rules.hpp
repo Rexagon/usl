@@ -18,22 +18,14 @@ namespace app
 	class Rules final
 	{
 	public:
-		Rules() = default;
-		Rules(const Term& t);
-		Rules(const NonTerm& t);
-		Rules(const RuleSet& t);
-		Rules(const std::vector<RuleSet>& t);
+	    Rules() = default;
+	    explicit Rules(const std::vector<RuleSet>& ruleSets);
 
 		void setName(size_t name);
 
 		std::vector<EarleyItem> generateEarleyItems(size_t begin) const;
 
 		const std::vector<RuleSet>& getRuleSets() const;
-
-		Rules operator|(const RuleSet& r) const;
-		Rules operator|(const RuleVariant& r) const;
-		friend Rules operator|(const RuleSet& l, const RuleSet& r);
-		friend Rules operator|(const RuleSet& l, const RuleVariant& r);
 
 	private:
 		size_t m_name = -1;
@@ -54,12 +46,6 @@ namespace app
 		size_t name;
 	};
 
-	struct Translator final
-	{
-		std::function<void(ByteCode&, size_t)> func = [](ByteCode&, size_t) {};
-		size_t span = 0;
-	};
-
 	struct RuleSet final
 	{
 		RuleSet() = default;
@@ -67,39 +53,6 @@ namespace app
 		bool operator==(const RuleSet& other) const;
 
 		std::vector<RuleVariant> rules;
-		std::optional<Translator> translator = std::nullopt;
 		bool isImportant = true;
 	};
-
-	Rules operator|(const RuleVariant& l, const RuleSet& r);
-	Rules operator|(const RuleVariant& l, const RuleVariant& r);
-
-	RuleSet operator>>(const RuleSet& l, const RuleVariant& r);
-	RuleSet operator>>(const RuleVariant& l, const RuleSet& r);
-	RuleSet operator>>(const RuleVariant& l, const RuleVariant& r);
-
-	template<bool V>
-	struct Importance : std::bool_constant<V> {};
-	struct IsImportant final : Importance<true> {};
-	struct NotImportant final : Importance<false> {};
-
-	template<bool V>
-	RuleSet operator<<(const RuleSet& l, const Importance<V>& importance)
-	{
-		auto result{ l };
-		result.isImportant = importance.value;
-		return result;
-	}
-
-	template<bool V>
-	RuleSet operator<<(const RuleVariant& l, const Importance<V>& importance)
-	{
-		RuleSet result;
-		result.rules = { l };
-		result.isImportant = importance.value;
-		return result;
-	}
-
-	RuleSet operator<<(const RuleSet& l, const Translator& translator);
-	RuleSet operator<<(const RuleVariant& l, const Translator& translator);
 }

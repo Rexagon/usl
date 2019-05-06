@@ -5,131 +5,205 @@
 using namespace app::lexer_grammar;
 using namespace app::parser_grammar;
 
+namespace app {
+    class RulesBuilder final
+    {
+    public:
+        Rules generate()
+        {
+            return Rules{ m_sets };
+        }
+
+        RulesBuilder& set()
+        {
+            m_sets.emplace_back();
+            return *this;
+        }
+
+        RulesBuilder& empty()
+        {
+            return *this;
+        }
+
+        RulesBuilder& term(size_t type)
+        {
+            assert(!m_sets.empty());
+            m_sets.back().rules.emplace_back(Term {type});
+            return *this;
+        }
+
+        RulesBuilder& nonterm(size_t type)
+        {
+            assert(!m_sets.empty());
+            m_sets.back().rules.emplace_back(NonTerm {type});
+            return *this;
+        }
+
+        RulesBuilder& hide()
+        {
+            assert(!m_sets.empty());
+            m_sets.back().isImportant = false;
+            return *this;
+        }
+
+    private:
+        std::vector<RuleSet> m_sets;
+    };
+}
+
 app::ParserGrammar::ParserGrammar()
 {
-	m_rules[STARTING_RULE] =
-		RuleSet{} << NotImportant{} |
-		NonTerm{ GeneralStatement } >> NonTerm{ STARTING_RULE } << NotImportant{};
+	m_rules[STARTING_RULE] = RulesBuilder()
+	        .set().empty().hide()
+	        .set().nonterm(GeneralStatement).nonterm(STARTING_RULE).hide()
+	        .generate();
 
-	m_rules[GeneralStatement] =
-		NonTerm{ Statement } << NotImportant{} |
-		NonTerm{ FunctionDeclaration } << NotImportant{};
+	m_rules[GeneralStatement] = RulesBuilder()
+	        .set().nonterm(Statement).hide()
+	        .set().nonterm(FunctionDeclaration).hide()
+	        .generate();
 
-	m_rules[Statement] =
-		NonTerm{ WhileLoop } << NotImportant{} |
-		NonTerm{ Branch } << NotImportant{} |
-		NonTerm{ VariableDeclaration } >> Term{ Semicolon } |
-		NonTerm{ Expression } >> Term{ Semicolon } << createSimpleTranslator(opcode::POP) |
-		Term{ KeywordReturn } >> NonTerm{ Expression } >> Term{ Semicolon } |
-		Term{ KeywordBreak } >> Term{ Semicolon } |
-		Term{ KeywordContinue } >> Term{ Semicolon };
+	m_rules[Statement] = RulesBuilder()
+	        .set().nonterm(WhileLoop).hide()
+	        .set().nonterm(Branch).hide()
+	        .set().nonterm(VariableDeclaration).term(Semicolon)
+	        .set().nonterm(Expression).term(Semicolon)
+	        .set().term(KeywordReturn).nonterm(Expression).term(Semicolon)
+	        .set().term(KeywordBreak).nonterm(Semicolon)
+	        .set().term(KeywordContinue).nonterm(Semicolon)
+	        .generate();
 
-	m_rules[FunctionDeclaration] =
-		Term{ KeywordFunction } >> Term{ Identifier } >> Term{ ParenthesisOpen } >>
-			NonTerm{ FunctionArguments } >> Term{ ParenthesisClose } >> NonTerm{ Block };
+	m_rules[FunctionDeclaration] = RulesBuilder()
+	        .set().term(KeywordFunction).term(Identifier).term(ParenthesisOpen).nonterm(FunctionArguments)
+	            .term(ParenthesisClose).nonterm(Block)
+            .generate();
 
-	m_rules[FunctionArguments] =
-		RuleSet{} |
-		NonTerm{ FunctionArgument } << NotImportant{};
+	m_rules[FunctionArguments] = RulesBuilder()
+	        .set().empty()
+	        .set().nonterm(FunctionArgument).hide()
+	        .generate();
 
-	m_rules[FunctionArgument] =
-		Term{ Identifier } >> NonTerm{ CommaFunctionArgument };
+	m_rules[FunctionArgument] = RulesBuilder()
+	        .set().term(Identifier).nonterm(CommaFunctionArgument)
+	        .generate();
 
-	m_rules[CommaFunctionArgument] =
-		RuleSet{} |
-		Term{ Comma } >> Term{ Identifier } >> NonTerm{ CommaFunctionArgument };
+	m_rules[CommaFunctionArgument] = RulesBuilder()
+	        .set().empty()
+	        .set().term(Comma).term(Identifier).nonterm(CommaFunctionArgument)
+	        .generate();
 
-	m_rules[Block] =
-		NonTerm{ Statement } |
-		Term{ BraceOpen } >> NonTerm{ BlockStatement } >> Term{ BraceClose };
+	m_rules[Block] = RulesBuilder()
+	        .set().nonterm(Statement)
+	        .set().term(BraceOpen).nonterm(BlockStatement).term(BraceClose)
+	        .generate();
 
-	m_rules[BlockStatement] =
-		RuleSet{} |
-		NonTerm{ Statement } >> NonTerm{ BlockStatement } << NotImportant{};
+	m_rules[BlockStatement] = RulesBuilder()
+	        .set().empty()
+	        .set().nonterm(Statement).nonterm(BlockStatement).hide()
+	        .generate();
 
-	m_rules[Condition] =
-		Term{ ParenthesisOpen } >> NonTerm{ Expression } >> Term{ ParenthesisClose };
+	m_rules[Condition] = RulesBuilder()
+	        .set().term(ParenthesisOpen).nonterm(Expression).term(ParenthesisClose)
+	        .generate();
 
-	m_rules[WhileLoop] =
-		Term{ KeywordWhile } >> NonTerm{ Condition } >> NonTerm{ Block };
+	m_rules[WhileLoop] = RulesBuilder()
+	        .set().term(KeywordWhile).nonterm(Condition).nonterm(Block)
+	        .generate();
 
-	m_rules[Branch] =
-		Term{ KeywordIf } >> NonTerm{ Condition} >> NonTerm{ Block } |
-		Term{ KeywordIf } >> NonTerm{ Condition } >> NonTerm{ Block } >> NonTerm{ ElseBranch };
+	m_rules[Branch] = RulesBuilder()
+	        .set().term(KeywordIf).nonterm(Condition).nonterm(Block)
+	        .set().term(KeywordIf).nonterm(Condition).nonterm(Block).nonterm(ElseBranch)
+	        .generate();
 
-	m_rules[ElseBranch] =
-		Term{ KeywordElse } >> NonTerm{ Block };
+	m_rules[ElseBranch] = RulesBuilder()
+	        .set().term(KeywordElse).nonterm(Block)
+	        .generate();
 
-	m_rules[VariableDeclaration] =
-		Term{ KeywordLet } >> Term{ Identifier } << createSimpleTranslator(opcode::DECL) |
-		Term{ KeywordLet } >> Term{ Identifier } >> Term{ OperatorAssignment } >> NonTerm{ Expression };
+	m_rules[VariableDeclaration] = RulesBuilder()
+	        .set().term(KeywordLet).term(Identifier)
+	        .set().term(KeywordLet).term(Identifier).term(OperatorAssignment).nonterm(Expression)
+	        .generate();
 
-	m_rules[Expression] =
-		NonTerm{ LogicalOrExpression } << NotImportant{} |
-		NonTerm{ UnaryExpression } >> Term{ OperatorAssignment } >> NonTerm{ Expression } << createSimpleTranslator(opcode::ASSIGN);
+	m_rules[Expression] = RulesBuilder()
+	        .set().nonterm(LogicalOrExpression).hide()
+	        .set().nonterm(UnaryExpression).term(OperatorAssignment).nonterm(Expression)
+	        .generate();
 
-	m_rules[LogicalOrExpression] =
-		NonTerm{ LogicalAndExpression } << NotImportant{} |
-		NonTerm{ LogicalOrExpression } >> Term{ OperatorOr } >> NonTerm{ LogicalAndExpression } << createSimpleTranslator(opcode::OR);
+	m_rules[LogicalOrExpression] = RulesBuilder()
+	        .set().nonterm(LogicalAndExpression).hide()
+	        .set().nonterm(LogicalOrExpression).term(OperatorOr).nonterm(LogicalAndExpression)
+	        .generate();
 
-	m_rules[LogicalAndExpression] =
-		NonTerm{ EqualityExpression } << NotImportant{} |
-		NonTerm{ LogicalAndExpression } >> Term{ OperatorAnd } >> NonTerm{ EqualityExpression } << createSimpleTranslator(opcode::AND);
+	m_rules[LogicalAndExpression] = RulesBuilder()
+	        .set().nonterm(EqualityExpression).hide()
+	        .set().nonterm(LogicalAndExpression).term(OperatorAnd).nonterm(EqualityExpression)
+	        .generate();
 
-	m_rules[EqualityExpression] =
-		NonTerm{ RelationalExpression } << NotImportant{} |
-		NonTerm{ EqualityExpression } >> Term{ OperatorEq } >> NonTerm{ RelationalExpression } << createSimpleTranslator(opcode::EQ) |
-		NonTerm{ EqualityExpression } >> Term{ OperatorNeq } >> NonTerm{ RelationalExpression } << createSimpleTranslator(opcode::NEQ);
+	m_rules[EqualityExpression] = RulesBuilder()
+	        .set().nonterm(RelationalExpression).hide()
+	        .set().nonterm(EqualityExpression).term(OperatorEq).nonterm(RelationalExpression)
+	        .set().nonterm(EqualityExpression).term(OperatorNeq).nonterm(RelationalExpression)
+	        .generate();
 
-	m_rules[RelationalExpression] =
-		NonTerm{ AdditiveExpression } << NotImportant{} |
-		NonTerm{ RelationalExpression } >> Term{ OperatorLt } >> NonTerm{ AdditiveExpression } << createSimpleTranslator(opcode::LT) |
-		NonTerm{ RelationalExpression } >> Term{ OperatorLeq } >> NonTerm{ AdditiveExpression } << createSimpleTranslator(opcode::LE) |
-		NonTerm{ RelationalExpression } >> Term{ OperatorGt } >> NonTerm{ AdditiveExpression } << createSimpleTranslator(opcode::GT) |
-		NonTerm{ RelationalExpression } >> Term{ OperatorGeq } >> NonTerm{ AdditiveExpression } << createSimpleTranslator(opcode::GE);
+	m_rules[RelationalExpression] = RulesBuilder()
+	        .set().nonterm(AdditiveExpression).hide()
+	        .set().nonterm(RelationalExpression).term(OperatorLt).nonterm(AdditiveExpression)
+	        .set().nonterm(RelationalExpression).term(OperatorLeq).nonterm(AdditiveExpression)
+	        .set().nonterm(RelationalExpression).term(OperatorGt).nonterm(AdditiveExpression)
+	        .set().nonterm(RelationalExpression).term(OperatorGeq).nonterm(AdditiveExpression)
+	        .generate();
 
-	m_rules[AdditiveExpression] =
-		NonTerm{ MultiplicativeExpression } << NotImportant{} |
-		NonTerm{ AdditiveExpression } >> Term{ OperatorPlus } >> NonTerm{ MultiplicativeExpression } << createSimpleTranslator(opcode::ADD) |
-		NonTerm{ AdditiveExpression } >> Term{ OperatorMinus } >> NonTerm{ MultiplicativeExpression } << createSimpleTranslator(opcode::SUB);
+	m_rules[AdditiveExpression] = RulesBuilder()
+	        .set().nonterm(MultiplicativeExpression).hide()
+	        .set().nonterm(AdditiveExpression).term(OperatorPlus).nonterm(MultiplicativeExpression)
+	        .set().nonterm(AdditiveExpression).term(OperatorMinus).nonterm(MultiplicativeExpression)
+	        .generate();
 
-	m_rules[MultiplicativeExpression] =
-		NonTerm{ UnaryExpression } << NotImportant{} |
-		NonTerm{ MultiplicativeExpression } >> Term{ OperatorMul } >> NonTerm{ UnaryExpression } << createSimpleTranslator(opcode::MUL) |
-		NonTerm{ MultiplicativeExpression } >> Term{ OperatorDiv } >> NonTerm{ UnaryExpression } << createSimpleTranslator(opcode::DIV);
+	m_rules[MultiplicativeExpression] = RulesBuilder()
+	        .set().nonterm(UnaryExpression).hide()
+	        .set().nonterm(MultiplicativeExpression).term(OperatorMul).nonterm(UnaryExpression)
+	        .set().nonterm(MultiplicativeExpression).term(OperatorDiv).nonterm(UnaryExpression)
+	        .generate();
 
-	m_rules[UnaryExpression] =
-		NonTerm{ PostfixExpression } << NotImportant{} |
-		Term{ OperatorIncrement } >> NonTerm{ UnaryExpression } |
-		Term{ OperatorDecrement } >> NonTerm{ UnaryExpression } |
-		Term{ OperatorPlus } >> NonTerm{ UnaryExpression } << NotImportant{} |
-		Term{ OperatorMinus } >> NonTerm{ UnaryExpression } |
-		Term{ OperatorNegate } >> NonTerm{ UnaryExpression };
+	m_rules[UnaryExpression] = RulesBuilder()
+	        .set().nonterm(PostfixExpression).hide()
+	        .set().term(OperatorIncrement).nonterm(UnaryExpression)
+	        .set().term(OperatorDecrement).nonterm(UnaryExpression)
+	        .set().term(OperatorPlus).nonterm(UnaryExpression).hide()
+	        .set().term(OperatorMinus).nonterm(UnaryExpression)
+	        .set().term(OperatorNegate).nonterm(UnaryExpression)
+	        .generate();
 
-	m_rules[PostfixExpression] =
-		NonTerm{ PrimaryExpression } << NotImportant{} |
-		NonTerm{ PostfixExpression } >> Term{ OperatorIncrement } |
-		NonTerm{ PostfixExpression } >> Term{ OperatorDecrement } |
-		NonTerm{ PostfixExpression } >> Term{ StructureReference } >> Term{ Identifier } |
-		NonTerm{ PostfixExpression } >> Term{ ParenthesisOpen } >> NonTerm{ CallArguments } >> Term{ ParenthesisClose };
+	m_rules[PostfixExpression] = RulesBuilder()
+	        .set().nonterm(PrimaryExpression).hide()
+	        .set().nonterm(PostfixExpression).term(OperatorIncrement)
+	        .set().nonterm(PostfixExpression).term(OperatorDecrement)
+	        .set().nonterm(PostfixExpression).term(StructureReference).term(Identifier)
+	        .set().nonterm(PostfixExpression).term(ParenthesisOpen).nonterm(CallArguments).term(ParenthesisClose)
+	        .generate();
 
-	m_rules[PrimaryExpression] =
-		Term{ Identifier } |
-        Term{ Boolean } |
-		Term{ Number } |
-		Term{ String } |
-		Term{ ParenthesisOpen } >> NonTerm{ Expression } >> Term{ ParenthesisClose };
+	m_rules[PrimaryExpression] = RulesBuilder()
+	        .set().term(Identifier)
+	        .set().term(Null)
+	        .set().term(Boolean)
+	        .set().term(Number)
+	        .set().term(String)
+	        .set().term(ParenthesisOpen).nonterm(Expression).term(ParenthesisClose)
+	        .generate();
 
-	m_rules[CallArguments] =
-		RuleSet{} |
-		NonTerm{ CallArgument } << NotImportant{};
+	m_rules[CallArguments] = RulesBuilder()
+	        .set().empty()
+	        .set().nonterm(CallArgument).hide()
+	        .generate();
 
-	m_rules[CallArgument] =
-		NonTerm{ Expression } >> NonTerm{ CommaCallArgument };
+	m_rules[CallArgument] = RulesBuilder()
+	        .set().nonterm(Expression).nonterm(CommaCallArgument)
+	        .generate();
 
-	m_rules[CommaCallArgument] =
-		RuleSet{} |
-		Term{ Comma } >> NonTerm{ Expression } >> NonTerm{ CommaCallArgument };
+	m_rules[CommaCallArgument] = RulesBuilder()
+	        .set().empty()
+	        .set().term(Comma).nonterm(Expression).nonterm(CommaCallArgument)
+	        .generate();
 
 	finalize();
 }
