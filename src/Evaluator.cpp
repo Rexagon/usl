@@ -493,7 +493,9 @@ void app::Evaluator::printStack()
 
     for (size_t i = 0; i < m_stack.size(); ++i) {
         printf("[%zu] ", i);
-        print(m_stack[i]);
+
+        std::visit(print, m_stack[i]);
+
         printf("\n");
     }
 }

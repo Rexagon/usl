@@ -66,8 +66,6 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 	}
 
 	// Prepare for generating AST
-	using CompletedItem = std::pair<const EarleyItem*, size_t>;
-
 	std::vector<std::list<CompletedItem>> completedItems;
 	completedItems.resize(m_stateSets.size());
 
@@ -94,34 +92,28 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 	}*/
 
 	// Generate AST
-	struct SyntaxNode
-	{
-		CompletedItem value {nullptr, 0};
-		const Token* token = nullptr;
-
-		std::list<std::unique_ptr<SyntaxNode>> children;
-	};
-
 	SyntaxNode root;
 
 	std::stack<SyntaxNode*> stack;
 	stack.push(&root);
 
-	ByteCode byteCode;
-	byteCode.reserve(tokens.size());
-
 	for (size_t i = 0; i < tokens.size(); ++i) {
-		while (stack.top()->value.first != nullptr &&
-			i >= stack.top()->value.second)
-		{
-			stack.pop();
+	    // Pop all completed items
+		while (true) {
+            const auto* value = std::get_if<CompletedItem>(&stack.top()->value);
+            if (value == nullptr || i < value->second) {
+                break;
+            }
+            stack.pop();
 		}
 
+		// Attach other children as terminals
 		for (const auto& item : completedItems[i]) {
-			if (stack.top()->value.first != nullptr &&
-				stack.top()->value.second < item.second) 
-			{
+            const auto* value = std::get_if<CompletedItem>(&stack.top()->value);
+
+			if (value != nullptr && value->second < item.second) {
 				stack.pop();
+
 				auto last = std::move(stack.top()->children.back());
 				stack.top()->children = std::move(last->children);
 			}
@@ -136,46 +128,26 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 		}
 
 		auto leaf = std::make_unique<SyntaxNode>();
-		leaf->token = &tokens[i];
-
-		if (lexer_grammar::isValue(tokens[i].first)) {
-			byteCode.emplace_back(convert(tokens[i]));
-		}
+		leaf->value = &tokens[i];
 
 		stack.top()->children.emplace_back(std::move(leaf));
 	}
 
+    // Translate to bytecode
+    CommandBuffer commandBuffer;
+
+    for (auto& item : root.children) {
+        item->translate(commandBuffer);
+    }
+
+	commandBuffer.generate();
+
 	const auto AFTER = std::chrono::high_resolution_clock::now();
-
-	for (const auto& item : byteCode) {
-		std::visit([](auto&& arg) {
-			using T = std::decay_t<decltype(arg)>;
-
-			if constexpr (std::is_same_v<T, std::nullopt_t>) {
-				printf("Null ");
-			}
-			else if constexpr (std::is_same_v<T, bool>) {
-				printf("Bool(%d) ", arg);
-			}
-			else if constexpr (std::is_same_v<T, double>) {
-				printf("Num(%f) ", arg);
-			}
-			else if constexpr (std::is_same_v<T, std::string>) {
-				printf("Str(%s) ", arg.c_str());
-			}
-			else if constexpr(std::is_same_v<T, std::string_view>) {
-				const std::string temp(static_cast<std::string_view>(arg));
-				printf("Id(%s) ", temp.c_str());
-			}
-			else if constexpr(std::is_same_v<T, opcode::Code>) {
-				printf("Op(%d) ", arg);
-			}
-		}, item);
-	}
 
 	using MilliDuration = std::chrono::duration<double, std::milli>;
 	printf("AST generated in %f ms\n", std::chrono::duration_cast<MilliDuration>(AFTER - BEFORE).count());
 
+	// Print AST
 	std::unordered_set<size_t> depthMask;
 	std::function<void(const SyntaxNode*, size_t)> printTree;
 	printTree = [&printTree, &depthMask](const SyntaxNode * node, const size_t depth) {
@@ -188,13 +160,22 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 			}
 		}
 
-		if (node->value.first != nullptr) {
-			printf("(%zu) ", node->value.second);
-			node->value.first->print();
-		}
-		else if(node->token) {
-			printf("Term(%zu)\n", node->token->first);
-		}
+		std::visit([](auto&& arg) {
+		    using T = std::decay_t<decltype(arg)>;
+
+		    if constexpr (std::is_same_v<T, CompletedItem>) {
+                printf("(%zu) ", arg.second);
+                arg.first->print();
+		    }
+		    else {
+				if (arg == nullptr) {
+					printf("Root\n");
+				}
+				else {
+					printf("Term(%zu)\n", arg->first);
+				}
+		    }
+		}, node->value);
 
 		if (!node->children.empty()) {
 			depthMask.emplace(depth);

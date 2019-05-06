@@ -56,7 +56,7 @@ const char* app::opcode::toString(size_t code)
     }
 }
 
-void app::print(const app::StackItem& item)
+void app::print(const app::ByteCodeItem & item)
 {
     std::visit([](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
@@ -75,6 +75,12 @@ void app::print(const app::StackItem& item)
         }
         else if constexpr (std::is_same_v<T, std::string_view>) {
             printf("var: %s", std::string(arg).c_str());
+        }
+        else if constexpr (std::is_same_v<T, opcode::Code>) {
+            printf("op: %s", std::string(opcode::toString(arg)).c_str());
+        }
+        else if constexpr (std::is_same_v<T, Pointer >) {
+            printf("ptr: %zu", arg);
         }
     }, item);
 }

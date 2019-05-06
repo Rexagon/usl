@@ -4,6 +4,14 @@
 
 #include <cassert>
 
+void app::SyntaxNode::translate(CommandBuffer& cb)
+{
+    const auto* item = std::get_if<CompletedItem>(&value);
+    if (item != nullptr) {
+        item->first->getRuleSet().translator(cb, *this);
+    }
+}
+
 app::Rules::Rules(const std::vector<app::RuleSet> &sets) :
         m_sets(sets)
 {
@@ -36,6 +44,13 @@ bool app::Term::operator==(const Term &other) const {
 
 bool app::NonTerm::operator==(const NonTerm &other) const {
     return name == other.name;
+}
+
+void app::RuleSet::defaultTranslator(CommandBuffer& cb, SyntaxNode& node)
+{
+    for (auto& child : node.children) {
+        child->translate(cb);
+    }
 }
 
 bool app::RuleSet::operator==(const RuleSet &other) const {

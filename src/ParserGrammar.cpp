@@ -39,6 +39,13 @@ namespace app {
             return *this;
         }
 
+        RulesBuilder& translate(const RuleSet::Translator& translator)
+        {
+            assert(!m_sets.empty());
+            m_sets.back().translator = translator;
+            return *this;
+        }
+
         RulesBuilder& hide()
         {
             assert(!m_sets.empty());
@@ -66,11 +73,13 @@ app::ParserGrammar::ParserGrammar()
 	m_rules[Statement] = RulesBuilder()
 	        .set().nonterm(WhileLoop).hide()
 	        .set().nonterm(Branch).hide()
-	        .set().nonterm(VariableDeclaration).term(Semicolon)
-	        .set().nonterm(Expression).term(Semicolon)
-	        .set().term(KeywordReturn).nonterm(Expression).term(Semicolon)
-	        .set().term(KeywordBreak).nonterm(Semicolon)
-	        .set().term(KeywordContinue).nonterm(Semicolon)
+	        .set().nonterm(VariableDeclaration).term(Semicolon).hide()
+	        .set().nonterm(Expression).term(Semicolon).hide()
+	        .set().term(KeywordReturn).nonterm(Expression).term(Semicolon).translate([](auto& cb, auto& node) {
+	            cb.push(opcode::RET);
+	        })
+	        //.set().term(KeywordBreak).nonterm(Semicolon)
+	        //.set().term(KeywordContinue).nonterm(Semicolon)
 	        .generate();
 
 	m_rules[FunctionDeclaration] = RulesBuilder()
@@ -182,12 +191,17 @@ app::ParserGrammar::ParserGrammar()
 	        .set().nonterm(PostfixExpression).term(ParenthesisOpen).nonterm(CallArguments).term(ParenthesisClose)
 	        .generate();
 
+	const auto translateToken = [](CommandBuffer& cb, SyntaxNode& node) {
+        const Token* token = *std::get_if<const Token *>(&node.children.front()->value);
+        cb.push(convert(*token));
+    };
+
 	m_rules[PrimaryExpression] = RulesBuilder()
-	        .set().term(Identifier)
-	        .set().term(Null)
-	        .set().term(Boolean)
-	        .set().term(Number)
-	        .set().term(String)
+	        .set().term(Identifier).translate(translateToken)
+	        .set().term(Null).translate(translateToken)
+	        .set().term(Boolean).translate(translateToken)
+	        .set().term(Number).translate(translateToken)
+	        .set().term(String).translate(translateToken)
 	        .set().term(ParenthesisOpen).nonterm(Expression).term(ParenthesisClose)
 	        .generate();
 

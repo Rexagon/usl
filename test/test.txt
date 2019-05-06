@@ -14,3 +14,8 @@ while (i != 0) {
 }
 
 let test_after = test_function(test_number, 1);
+
+
+while (false || true) {
+    let asd = 0;
+}

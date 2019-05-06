@@ -78,7 +78,7 @@ namespace app
 	using ByteCodeItem = std::variant<std::nullopt_t, bool, double, std::string, std::string_view, opcode::Code, Pointer>;
 	using StackItem = std::variant<std::nullopt_t, bool, double, std::string, std::string_view>;
 
-	void print(const StackItem& item);
+	void print(const ByteCodeItem& item);
 
 	template<typename T>
 	inline constexpr bool dereferencable = details::is_any_of_v<T, std::nullopt_t, bool, double, std::string>;

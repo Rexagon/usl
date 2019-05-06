@@ -4,6 +4,7 @@
 #include <functional>
 
 #include "LexerGrammar.hpp"
+#include "CommandBuffer.hpp"
 
 namespace app
 {
@@ -14,6 +15,16 @@ namespace app
 	class EarleyItem;
 
 	using RuleVariant = std::variant<Term, NonTerm>;
+    using CompletedItem = std::pair<const EarleyItem*, size_t>; // Item and its end
+
+    struct SyntaxNode
+    {
+        std::variant<CompletedItem, const Token*> value = nullptr;
+
+        std::list<std::unique_ptr<SyntaxNode>> children;
+
+        void translate(CommandBuffer& cb);
+    };
 
 	class Rules final
 	{
@@ -48,11 +59,16 @@ namespace app
 
 	struct RuleSet final
 	{
+	    using Translator = std::function<void(CommandBuffer&, SyntaxNode& node)>;
+        static void defaultTranslator(CommandBuffer& cb, SyntaxNode& node);
+
 		RuleSet() = default;
 
 		bool operator==(const RuleSet& other) const;
 
 		std::vector<RuleVariant> rules;
+		Translator translator = &RuleSet::defaultTranslator;
 		bool isImportant = true;
+
 	};
 }
