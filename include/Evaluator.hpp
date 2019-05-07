@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <stack>
 #include <stdexcept>
 #include <functional>
@@ -56,7 +57,7 @@ namespace app
 		std::vector<std::unordered_set<std::string_view>> m_blocks;
 		std::unordered_map<std::string_view, Symbol> m_variables;
 
-		std::vector<StackItem> m_stack;
+		std::deque<StackItem> m_stack;
 		std::stack<Pointer> m_pointerStack;
 	};
 }

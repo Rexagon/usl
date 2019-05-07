@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <variant>
 #include <functional>
 
@@ -21,9 +22,13 @@ namespace app
     {
         std::variant<CompletedItem, const Token*> value = nullptr;
 
-        std::list<std::unique_ptr<SyntaxNode>> children;
+        std::deque<std::unique_ptr<SyntaxNode>> children;
 
         void translate(CommandBuffer& cb);
+
+        void print() const;
+
+        static void printTree(const SyntaxNode& root);
     };
 
 	class Rules final

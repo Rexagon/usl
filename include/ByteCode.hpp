@@ -44,7 +44,7 @@ namespace app
 
 			IF,			// bool, ptr (if true), ptr (if false), IF ->
 			JMP,		// ptr, JMP ->
-			CALL,		// ptr, CALL -> [push current ptr]
+			CALL,		// var, CALL -> [push current ptr]
 			RET,		// RET -> [pop current ptr]
 
 			DEFBLOCK,	// DEFBLOCK ->

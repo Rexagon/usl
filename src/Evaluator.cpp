@@ -427,16 +427,20 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 	};
 
 	const auto opCall = [this, &position]() {
-		if (m_pointerStack.empty()) {
+		if (m_stack.empty()) {
 			throw std::runtime_error("Unable to read CALL arguments. "
-				"Pointer stack is empty");
+				"Stack is empty");
 		}
 
-		const auto pointer = m_pointerStack.top();
-		m_pointerStack.pop();
+        const auto value = std::get_if<std::string_view>(&m_stack.back());
+        if (value == nullptr) {
+            throw std::runtime_error("Unable to read IF arguments. Invalid argument type");
+        }
+
+        //TODO: call function
 
 		m_pointerStack.push(position + 1);
-		position = pointer;
+		++position;
 	};
 
 	switch (op) {

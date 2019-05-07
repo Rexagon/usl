@@ -11,7 +11,7 @@ app::Parser::Parser() :
 {
 }
 
-void app::Parser::parse(const std::vector<Token>& tokens)
+std::vector<app::ByteCodeItem> app::Parser::parse(const std::vector<Token>& tokens)
 {
 	const auto BEFORE = std::chrono::high_resolution_clock::now();
 
@@ -135,61 +135,16 @@ void app::Parser::parse(const std::vector<Token>& tokens)
 
     // Translate to bytecode
     CommandBuffer commandBuffer;
+	RuleSet::defaultTranslator(commandBuffer, root);
 
-    for (auto& item : root.children) {
-        item->translate(commandBuffer);
-    }
-
-	commandBuffer.generate();
-
-	const auto AFTER = std::chrono::high_resolution_clock::now();
+    const auto AFTER = std::chrono::high_resolution_clock::now();
 
 	using MilliDuration = std::chrono::duration<double, std::milli>;
-	printf("AST generated in %f ms\n", std::chrono::duration_cast<MilliDuration>(AFTER - BEFORE).count());
+    printf("AST generated in %f ms\n", std::chrono::duration_cast<MilliDuration>(AFTER - BEFORE).count());
 
-	// Print AST
-	std::unordered_set<size_t> depthMask;
-	std::function<void(const SyntaxNode*, size_t)> printTree;
-	printTree = [&printTree, &depthMask](const SyntaxNode * node, const size_t depth) {
-		for (size_t i = 0; i < depth; ++i) {
-			if (i == depth - 1) {
-				printf("*--");
-			}
-			else {
-				printf("%s  ", depthMask.find(i) == depthMask.end() ? " " : "|");
-			}
-		}
+    SyntaxNode::printTree(root);
 
-		std::visit([](auto&& arg) {
-		    using T = std::decay_t<decltype(arg)>;
-
-		    if constexpr (std::is_same_v<T, CompletedItem>) {
-                printf("(%zu) ", arg.second);
-                arg.first->print();
-		    }
-		    else {
-				if (arg == nullptr) {
-					printf("Root\n");
-				}
-				else {
-					printf("Term(%zu)\n", arg->first);
-				}
-		    }
-		}, node->value);
-
-		if (!node->children.empty()) {
-			depthMask.emplace(depth);
-
-			for (auto it = node->children.begin(); it != node->children.end(); ++it) {
-				if (*it == node->children.back()) {
-					depthMask.erase(depth);
-				}
-				printTree(it->get(), depth + 1);
-			}
-		}
-	};
-
-	printTree(&root, 0);
+    return commandBuffer.generate();
 }
 
 void app::Parser::scan(const size_t i, const size_t j, const Token& token)

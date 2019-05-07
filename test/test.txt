@@ -1,21 +1,10 @@
-function test_function(first_arg, second_arg) {
-	return "hello world with spaces and strings!";
+let test_number = 123 + 1;
+test_number = (test_number + 10) / (-0.5);
+
+test_number = test_number > 10 || test_number == 1;
+
+/*
+if (test_number > 10) {
+    test_number = 1;
 }
-
-let test_number = 123;
-test_number = (test_number + 10) / 0.5; // test asd qweqwe ert
-
-let i = 10;
-while (i != 0) {
-	if (test_number > 100) {
-		test_number = test_number * 10;
-	}
-	--i;
-}
-
-let test_after = test_function(test_number, 1);
-
-
-while (false || true) {
-    let asd = 0;
-}
+*/

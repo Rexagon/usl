@@ -12,7 +12,7 @@ namespace app
 	public:
 		Parser();
 
-		void parse(const std::vector<Token>& tokens);
+		std::vector<ByteCodeItem> parse(const std::vector<Token>& tokens);
 
 	private:
 		void scan(size_t i, size_t j, const Token& token);

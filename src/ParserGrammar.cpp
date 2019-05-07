@@ -128,67 +128,117 @@ app::ParserGrammar::ParserGrammar()
 	        .set().term(KeywordElse).nonterm(Block)
 	        .generate();
 
+	const auto declareVariable = [](CommandBuffer& cb, SyntaxNode& node, bool push = false) {
+        const Token* token = *std::get_if<const Token *>(&node.children[1]->value);
+        cb.push(convert(*token));
+	    cb.push(opcode::DECL);
+
+	    if (push) {
+            cb.push(convert(*token));
+	    }
+	};
+
 	m_rules[VariableDeclaration] = RulesBuilder()
-	        .set().term(KeywordLet).term(Identifier)
+	        .set().term(KeywordLet).term(Identifier).translate(declareVariable)
 	        .set().term(KeywordLet).term(Identifier).term(OperatorAssignment).nonterm(Expression)
+	            .translate([declareVariable](CommandBuffer& cb, SyntaxNode& node) {
+                    declareVariable(cb, *node.children[0], true);
+                    cb.translate(*node.children[2]);
+                    cb.push(opcode::ASSIGN);
+	            })
 	        .generate();
+
+	const auto createBinaryTranslator = [](opcode::Code op) {
+	    return [op](CommandBuffer& cb, SyntaxNode& node) {
+			if (node.children.size() < 3) {
+				RuleSet::defaultTranslator(cb, node);
+				return;
+			}
+
+            cb.translate(*node.children[0]);
+            cb.translate(*node.children[2]);
+            cb.push(op);
+        };
+    };
 
 	m_rules[Expression] = RulesBuilder()
 	        .set().nonterm(LogicalOrExpression).hide()
 	        .set().nonterm(UnaryExpression).term(OperatorAssignment).nonterm(Expression)
+	            .translate(createBinaryTranslator(opcode::ASSIGN))
 	        .generate();
 
 	m_rules[LogicalOrExpression] = RulesBuilder()
 	        .set().nonterm(LogicalAndExpression).hide()
 	        .set().nonterm(LogicalOrExpression).term(OperatorOr).nonterm(LogicalAndExpression)
+	            .translate(createBinaryTranslator(opcode::OR))
 	        .generate();
 
 	m_rules[LogicalAndExpression] = RulesBuilder()
 	        .set().nonterm(EqualityExpression).hide()
 	        .set().nonterm(LogicalAndExpression).term(OperatorAnd).nonterm(EqualityExpression)
+	            .translate(createBinaryTranslator(opcode::AND))
 	        .generate();
 
 	m_rules[EqualityExpression] = RulesBuilder()
 	        .set().nonterm(RelationalExpression).hide()
 	        .set().nonterm(EqualityExpression).term(OperatorEq).nonterm(RelationalExpression)
+                .translate(createBinaryTranslator(opcode::EQ))
 	        .set().nonterm(EqualityExpression).term(OperatorNeq).nonterm(RelationalExpression)
+                .translate(createBinaryTranslator(opcode::NEQ))
 	        .generate();
 
 	m_rules[RelationalExpression] = RulesBuilder()
 	        .set().nonterm(AdditiveExpression).hide()
 	        .set().nonterm(RelationalExpression).term(OperatorLt).nonterm(AdditiveExpression)
+                .translate(createBinaryTranslator(opcode::LT))
 	        .set().nonterm(RelationalExpression).term(OperatorLeq).nonterm(AdditiveExpression)
+                .translate(createBinaryTranslator(opcode::LE))
 	        .set().nonterm(RelationalExpression).term(OperatorGt).nonterm(AdditiveExpression)
+                .translate(createBinaryTranslator(opcode::GT))
 	        .set().nonterm(RelationalExpression).term(OperatorGeq).nonterm(AdditiveExpression)
+                .translate(createBinaryTranslator(opcode::GE))
 	        .generate();
 
 	m_rules[AdditiveExpression] = RulesBuilder()
 	        .set().nonterm(MultiplicativeExpression).hide()
 	        .set().nonterm(AdditiveExpression).term(OperatorPlus).nonterm(MultiplicativeExpression)
+                .translate(createBinaryTranslator(opcode::ADD))
 	        .set().nonterm(AdditiveExpression).term(OperatorMinus).nonterm(MultiplicativeExpression)
+                .translate(createBinaryTranslator(opcode::SUB))
 	        .generate();
 
 	m_rules[MultiplicativeExpression] = RulesBuilder()
 	        .set().nonterm(UnaryExpression).hide()
 	        .set().nonterm(MultiplicativeExpression).term(OperatorMul).nonterm(UnaryExpression)
+                .translate(createBinaryTranslator(opcode::MUL))
 	        .set().nonterm(MultiplicativeExpression).term(OperatorDiv).nonterm(UnaryExpression)
+                .translate(createBinaryTranslator(opcode::DIV))
 	        .generate();
+
+    const auto createUnaryTranslator = [](opcode::Code op, bool prefix) {
+        return [op, prefix](CommandBuffer& cb, SyntaxNode& node) {
+            cb.translate(*node.children[prefix ? 1 : 0]);
+            cb.push(op);
+        };
+    };
 
 	m_rules[UnaryExpression] = RulesBuilder()
 	        .set().nonterm(PostfixExpression).hide()
-	        .set().term(OperatorIncrement).nonterm(UnaryExpression)
-	        .set().term(OperatorDecrement).nonterm(UnaryExpression)
+	        //.set().term(OperatorIncrement).nonterm(UnaryExpression)
+	        //.set().term(OperatorDecrement).nonterm(UnaryExpression)
 	        .set().term(OperatorPlus).nonterm(UnaryExpression).hide()
 	        .set().term(OperatorMinus).nonterm(UnaryExpression)
+	            .translate(createUnaryTranslator(opcode::UNM, true))
 	        .set().term(OperatorNegate).nonterm(UnaryExpression)
+                .translate(createUnaryTranslator(opcode::NOT, true))
 	        .generate();
 
 	m_rules[PostfixExpression] = RulesBuilder()
 	        .set().nonterm(PrimaryExpression).hide()
-	        .set().nonterm(PostfixExpression).term(OperatorIncrement)
-	        .set().nonterm(PostfixExpression).term(OperatorDecrement)
-	        .set().nonterm(PostfixExpression).term(StructureReference).term(Identifier)
-	        .set().nonterm(PostfixExpression).term(ParenthesisOpen).nonterm(CallArguments).term(ParenthesisClose)
+	        //.set().nonterm(PostfixExpression).term(OperatorIncrement)
+	        //.set().nonterm(PostfixExpression).term(OperatorDecrement)
+	        //.set().nonterm(PostfixExpression).term(StructureReference).term(Identifier)
+	        //.set().nonterm(PostfixExpression).term(ParenthesisOpen).nonterm(CallArguments).term(ParenthesisClose)
 	        .generate();
 
 	const auto translateToken = [](CommandBuffer& cb, SyntaxNode& node) {
