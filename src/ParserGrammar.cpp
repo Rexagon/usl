@@ -101,9 +101,17 @@ app::ParserGrammar::ParserGrammar()
 	        .set().term(Comma).term(Identifier).nonterm(CommaFunctionArgument)
 	        .generate();
 
+	const auto createBlockTranslator = [](bool single) {
+	    return [single](CommandBuffer& cb, SyntaxNode& node) {
+            cb.push(opcode::DEFBLOCK);
+            cb.translate(*node.children[single ? 0 : 1]);
+            cb.push(opcode::DELBLOCK);
+	    };
+	};
+
 	m_rules[Block] = RulesBuilder()
-	        .set().nonterm(Statement)
-	        .set().term(BraceOpen).nonterm(BlockStatement).term(BraceClose)
+	        .set().nonterm(Statement)//.translate(createBlockTranslator(true))
+	        .set().term(BraceOpen).nonterm(BlockStatement).term(BraceClose)//.translate(createBlockTranslator(true))
 	        .generate();
 
 	m_rules[BlockStatement] = RulesBuilder()
@@ -113,6 +121,9 @@ app::ParserGrammar::ParserGrammar()
 
 	m_rules[Condition] = RulesBuilder()
 	        .set().term(ParenthesisOpen).nonterm(Expression).term(ParenthesisClose)
+	            .translate([](CommandBuffer& cb, SyntaxNode& node) {
+	                cb.translate(*node.children[1]);
+	            })
 	        .generate();
 
 	m_rules[WhileLoop] = RulesBuilder()
@@ -120,8 +131,42 @@ app::ParserGrammar::ParserGrammar()
 	        .generate();
 
 	m_rules[Branch] = RulesBuilder()
-	        .set().term(KeywordIf).nonterm(Condition).nonterm(Block)
-	        .set().term(KeywordIf).nonterm(Condition).nonterm(Block).nonterm(ElseBranch)
+			.set().term(KeywordIf).nonterm(Condition).nonterm(Block)
+				.translate([](CommandBuffer & cb, SyntaxNode & node) {
+					const auto truePosition = cb.createPositionIndex();
+					const auto falsePosition = cb.createPositionIndex();
+
+                    cb.translate(*node.children[1]);
+					cb.requestPosition(truePosition);
+					cb.requestPosition(falsePosition);
+					cb.push(opcode::IF);
+					cb.replyPosition(truePosition);
+					cb.translate(*node.children[2]);
+					cb.replyPosition(falsePosition);
+				})
+            .set().term(KeywordIf).nonterm(Condition).nonterm(Block).nonterm(ElseBranch)
+                .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                    const auto truePosition = cb.createPositionIndex();
+                    const auto falsePosition = cb.createPositionIndex();
+                    const auto endPosition = cb.createPositionIndex();
+
+                    const auto& ifBranch = *node.children[0];
+                    cb.translate([&ifBranch, truePosition, falsePosition, endPosition](CommandBuffer& cb) {
+                        cb.translate(*ifBranch.children[1]);
+                        cb.requestPosition(truePosition);
+                        cb.requestPosition(falsePosition);
+                        cb.push(opcode::IF);
+                        cb.replyPosition(truePosition);
+                        cb.translate(*ifBranch.children[2]);
+                        cb.requestPosition(endPosition);
+                        cb.push(opcode::JMP);
+                    });
+
+                    cb.replyPosition(falsePosition);
+                    cb.translate(*node.children[1]);
+
+                    cb.replyPosition(endPosition);
+                })
 	        .generate();
 
 	m_rules[ElseBranch] = RulesBuilder()

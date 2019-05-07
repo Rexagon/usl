@@ -3,8 +3,9 @@ test_number = (test_number + 10) / (-0.5);
 
 test_number = test_number > 10 || test_number == 1;
 
-/*
 if (test_number > 10) {
     test_number = 1;
 }
-*/
+else {
+    test_number = 123;
+}

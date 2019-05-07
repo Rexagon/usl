@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <numeric>
+#include <unordered_map>
 
 #include "Rules.hpp"
 
@@ -33,31 +34,53 @@ std::vector<app::ByteCodeItem> app::CommandBuffer::generate()
         }, *it);
     }
 
+    std::unordered_map<size_t, size_t> replies;
+
+    size_t position = 0;
+    for (auto it = m_commands.begin(); it != m_commands.end();) {
+        std::visit([this, &it, &replies, &position](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+
+            if constexpr (std::is_same_v<T, PointerReply>) {
+                replies.try_emplace(arg.index, position);
+
+                it = m_commands.erase(it);
+            }
+            else if constexpr (!std::is_same_v<T, Task> && !std::is_same_v<T, SyntaxNode*>) {
+                ++it;
+                ++position;
+            }
+            else {
+                throw std::runtime_error("Bad grammar");
+            }
+        }, *it);
+    }
+
     std::vector<app::ByteCodeItem> result;
     result.reserve(m_commands.size());
 
     for (const auto& command : m_commands) {
-        std::visit([&result](auto&& arg) {
+        std::visit([&result, &replies](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
 
             if constexpr (std::is_same_v<T, PointerRequest>) {
-                printf("ptr request\n");
-            }
-            else if constexpr (std::is_same_v<T, PointerReply>) {
-                printf("ptr reply\n");
+                const auto it = replies.find(arg.index);
+                if (it == replies.end()) {
+                    throw std::runtime_error("Bad pointers grammar");
+                }
+
+                result.emplace_back(Pointer{ it->second });
             }
             else if constexpr (std::is_same_v<T, ByteCodeItem>) {
-                print(arg);
-                printf("\n");
-
                 result.emplace_back(arg);
             }
-            else if constexpr (std::is_same_v<T, SyntaxNode*>) {
-                printf("Node\n");
-            }
             else {
-                printf("task\n");
+                throw std::runtime_error("Bad grammar");
             }
+
+            printf("[%3zu] ", result.size() - 1);
+            print(result.back());
+            printf("\n");
         }, command);
     }
 
