@@ -110,8 +110,8 @@ app::ParserGrammar::ParserGrammar()
 	};
 
 	m_rules[Block] = RulesBuilder()
-	        .set().nonterm(Statement)//.translate(createBlockTranslator(true))
-	        .set().term(BraceOpen).nonterm(BlockStatement).term(BraceClose)//.translate(createBlockTranslator(true))
+	        .set().nonterm(Statement).translate(createBlockTranslator(true))
+	        .set().term(BraceOpen).nonterm(BlockStatement).term(BraceClose).translate(createBlockTranslator(false))
 	        .generate();
 
 	m_rules[BlockStatement] = RulesBuilder()
