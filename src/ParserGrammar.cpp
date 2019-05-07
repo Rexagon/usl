@@ -128,6 +128,22 @@ app::ParserGrammar::ParserGrammar()
 
 	m_rules[WhileLoop] = RulesBuilder()
 	        .set().term(KeywordWhile).nonterm(Condition).nonterm(Block)
+	            .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                    const auto testPosition = cb.createPositionIndex();
+                    const auto startPosition = cb.createPositionIndex();
+                    const auto endPosition = cb.createPositionIndex();
+
+                    cb.replyPosition(testPosition);
+                    cb.translate(*node.children[1]);
+                    cb.requestPosition(startPosition);
+                    cb.requestPosition(endPosition);
+                    cb.push(opcode::IF);
+                    cb.replyPosition(startPosition);
+                    cb.translate(*node.children[2]);
+                    cb.requestPosition(testPosition);
+                    cb.push(opcode::JMP);
+                    cb.replyPosition(endPosition);
+	            })
 	        .generate();
 
 	m_rules[Branch] = RulesBuilder()

@@ -247,7 +247,7 @@ void app::Evaluator::handleBinaryOperator(const app::ByteCode& bytecode, size_t&
             " arguments. Stack size is less then 2");
     }
 
-    auto valueRight = std::move(m_stack.back());
+    auto valueRight = m_stack.back();
     m_stack.pop_back();
 
     auto& valueLeft = m_stack.back();
@@ -400,10 +400,11 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 				"Pointer stack size is less then 2");
 		}
 
-		const auto value = std::get_if<bool>(&m_stack.back());
-		if (value == nullptr) {
+		if (!std::holds_alternative<bool>(m_stack.back())) {
 			throw std::runtime_error("Unable to read IF arguments. Invalid argument type");
 		}
+        const auto value = *std::get_if<bool>(&m_stack.back());
+		m_stack.pop_back();
 
 		const auto falsePointer = m_pointerStack.top();
 		m_pointerStack.pop();
@@ -411,7 +412,7 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 		const auto truePointer = m_pointerStack.top();
 		m_pointerStack.pop();
 
-		position = *value ? truePointer : falsePointer;
+		position = value ? truePointer : falsePointer;
 	};
 
 	const auto opJmp = [this, &position](opcode::Code op) {
