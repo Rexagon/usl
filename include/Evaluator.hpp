@@ -11,9 +11,12 @@
 
 namespace app
 {
-	class Evaluator final
-	{
-	public:
+
+    class Evaluator final
+    {
+        using StackItem = std::variant<Symbol, std::string_view>;
+
+    public:
 		void eval(const ByteCode& bytecode);
 
 	private:
@@ -26,31 +29,32 @@ namespace app
 		void handleControl(const ByteCode& bytecode, size_t& position, opcode::Code op);
 		void handleBlocks(const ByteCode& bytecode, size_t& position, opcode::Code op);
 
-		Symbol& findVariable(std::string_view name);
 
-        template<typename F>
-        void deref(F&& f, StackItem& item) {
-            std::visit([this, &f](auto&& arg) {
+        void visitSymbol(std::function<void(const Symbol&)> visitor, const StackItem& item)
+        {
+            std::visit([this, &visitor](auto&& arg) {
                 using T = std::decay_t<decltype(arg)>;
 
-                if constexpr (dereferencable<T>) {
-                    f(arg);
+                if constexpr (std::is_same_v<T, std::string_view>) {
+                    visitor(findVariable(arg));
                 }
-                else if constexpr (std::is_same_v<T, std::string_view>) {
-                    findVariable(arg).deref(f);
+                else {
+                    visitor(arg);
                 }
             }, item);
         }
 
         template<typename F>
-        void deref(F&& f, StackItem& argLeft, StackItem& argRight)
+        void visitSymbolsPair(F visitor, const StackItem& itemLeft, const StackItem& itemRight)
         {
-            deref([this, &f, &argRight](auto&& argL) {
-                deref([&f, &argL](auto&& argR) {
-                    f(argL, argR);
-                }, argRight);
-            }, argLeft);
+            visitSymbol([this, &visitor, &itemRight](const auto& symbolLeft) {
+                visitSymbol([&visitor, &symbolLeft](const auto& symbolRight) {
+                    visitor(symbolLeft, symbolRight);
+                }, itemRight);
+            }, itemLeft);
         }
+
+		Symbol& findVariable(std::string_view name);
 
         void printStack();
 

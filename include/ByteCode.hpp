@@ -35,6 +35,7 @@ namespace app
 
 			AND,		// val/var, val/var, AND -> val
 			OR,			// val/var, val/var, OR -> val
+
 			EQ,			// val/var, val/var, EQ -> val
 			NEQ,		// val/var, val/var, NEQ -> val
 			LT,			// val/var, val/var, LT -> val
@@ -60,10 +61,15 @@ namespace app
 			return (op >= ADD) && (op <= DIV);
 		}
 
-		constexpr bool isBoolOp(app::opcode::Code op)
+		constexpr bool isLogicOp(app::opcode::Code op)
 		{
-			return (op >= AND) && (op <= GE);
+			return (op >= AND) && (op <= OR);
 		}
+
+        constexpr bool isComparationOp(app::opcode::Code op)
+        {
+            return (op >= EQ) && (op <= GE);
+        }
 
 		constexpr bool isControlOp(Code op)
 		{
@@ -75,13 +81,16 @@ namespace app
 
 	using Pointer = size_t;
 
-	using ByteCodeItem = std::variant<std::nullopt_t, bool, double, std::string, std::string_view, opcode::Code, Pointer>;
-	using StackItem = std::variant<std::nullopt_t, bool, double, std::string, std::string_view>;
+	using ByteCodeItem = std::variant<
+	        std::nullopt_t,
+	        bool,
+	        double,
+	        std::string,
+	        std::string_view,
+	        opcode::Code,
+	        Pointer>;
 
 	void print(const ByteCodeItem& item);
-
-	template<typename T>
-	inline constexpr bool dereferencable = details::is_any_of_v<T, std::nullopt_t, bool, double, std::string>;
 
 	using ByteCode = std::vector<ByteCodeItem>;
 }

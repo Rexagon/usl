@@ -21,8 +21,11 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 				if constexpr (std::is_same_v<T, Pointer>) {
 					m_pointerStack.push(arg);
 				}
+				else if constexpr (std::is_same_v<T, std::string_view>) {
+					m_stack.emplace_back(arg);
+				}
 				else {
-					m_stack.push_back(arg);					
+                    m_stack.emplace_back(Symbol{arg, Symbol::ValueCategory::Rvalue} );
 				}
 
                 ++position;
@@ -100,7 +103,8 @@ void app::Evaluator::handleDecl(const ByteCode& bytecode, size_t& position)
         throw std::runtime_error("Unable to read DECL arguments. Invalid argument type");
 	}
 
-    m_variables.try_emplace(*variableName);
+    m_variables.try_emplace(*variableName, Symbol::ValueCategory::Lvalue);
+
 	if (!m_blocks.empty()) {
 	    m_blocks.back().emplace(*variableName);
 	}
@@ -129,14 +133,11 @@ void app::Evaluator::handleAssign(const ByteCode& bytecode, size_t& position)
 	std::visit([this, &variable](auto&& arg) {
 	    using T = std::decay_t<decltype(arg)>;
 
-	    if constexpr (std::is_same_v<T, std::nullopt_t>) {
-            variable.assign(nullptr);
+	    if constexpr (std::is_same_v<T, std::string_view>) {
+            variable.assign(findVariable(arg));
         }
-	    else if constexpr (details::is_any_of_v<T, bool, double, std::string>) {
-	        variable.assign(arg);
-	    }
-	    else if constexpr (std::is_same_v<T, std::string_view>) {
-            variable.assign(&findVariable(arg));
+	    else {
+            variable.assign(arg);
         }
     }, variableValue);
 
@@ -157,9 +158,10 @@ void app::Evaluator::handleDeref(const app::ByteCode &bytecode, size_t &position
         using T = std::decay_t<decltype(arg)>;
 
         if constexpr (std::is_same_v<T, std::string_view>) {
-            findVariable(arg).deref([&value](auto&& arg) {
-                value = arg;
-            });
+            value = Symbol{ findVariable(arg), Symbol::ValueCategory::Rvalue };
+        }
+        else {
+            arg.setValueCategory(Symbol::ValueCategory::Rvalue);
         }
     }, value);
 
@@ -185,56 +187,8 @@ void app::Evaluator::handleUnaryOperator(const app::ByteCode& bytecode, size_t& 
 
     auto& value = m_stack.back();
 
-    const auto opNot = [](auto&& arg) -> bool {
-        using T = std::decay_t<decltype(arg)>;
-
-        if constexpr (details::is_any_of_v<T, bool, double>) {
-            return !arg;
-        }
-        if constexpr (std::is_same_v<T, std::string>) {
-            return arg.empty();
-        }
-        else {
-            throw std::runtime_error("NOT is undefined for Null");
-        }
-    };
-
-    const auto opUnm = [](auto&& arg) -> double {
-        using T = std::decay_t<decltype(arg)>;
-
-        if constexpr (std::is_same_v<T, bool>) {
-            throw std::runtime_error("UNM is undefined for bool argument");
-        }
-        if constexpr (std::is_same_v<T, double>) {
-            return -arg;
-        }
-        if constexpr (std::is_same_v<T, std::string>) {
-            throw std::runtime_error("UNM is undefined for string argument");
-        }
-        else {
-            throw std::runtime_error("UNM is undefined for Null");
-        }
-    };
-
-    const auto apply = [&value, op, opNot, opUnm](auto&& arg) {
-        switch (op) {
-            case opcode::NOT:
-                value = opNot(arg);
-                break;
-            case opcode::UNM:
-                value = opUnm(arg);
-                break;
-            default:
-                break;
-        }
-    };
-
-    deref([this, &apply](auto&& arg) {
-        using T = std::decay_t<decltype(arg)>;
-
-        if constexpr (details::is_any_of_v<T, std::nullopt_t, bool, double, std::string>) {
-            apply(arg);
-        }
+    visitSymbol([&value, op](auto&& arg) {
+        value = arg.operationUnary(op);
     }, value);
 
     ++position;
@@ -252,137 +206,15 @@ void app::Evaluator::handleBinaryOperator(const app::ByteCode& bytecode, size_t&
 
     auto& valueLeft = m_stack.back();
 
-    const auto toString = [](auto&& arg) -> std::string {
-        using T = std::decay_t<decltype(arg)>;
-
-        if constexpr (std::is_same_v<T, bool>) {
-            return arg ? "True" : "False";
-        }
-        else if constexpr (std::is_same_v<T, double>) {
-            return std::to_string(arg);
-        }
-        else if constexpr (std::is_same_v<T, std::string>) {
-            return arg;
-        }
-        else {
-            return "Null";
-        }
-    };
-
-    enum class MathOp {
-        ADD = opcode::ADD,
-        SUB = opcode::SUB,
-        MUL = opcode::MUL,
-        DIV = opcode::DIV
-    };
-
-    const auto mathOp = [](auto&& argLeft, auto&& argRight, MathOp op) -> double {
-        using Tl = std::decay_t<decltype(argLeft)>;
-        using Tr = std::decay_t<decltype(argRight)>;
-
-        if constexpr (std::is_same_v<Tl, double> && std::is_same_v<Tr, double>) {
-            switch (op) {
-            case MathOp::ADD:
-                return argLeft + argRight;
-            case MathOp::SUB:
-                return argLeft - argRight;
-            case MathOp::MUL:
-                return argLeft * argRight;
-            case MathOp::DIV:
-                return argLeft / argRight;
-            }
-        }
-
-        throw std::runtime_error(std::string(opcode::toString(static_cast<opcode::Code>(op))) +
-                                 " is undefined for that argument types");
-    };
-
-    enum class BoolOp {
-        AND = opcode::AND,
-        OR = opcode::OR,
-        EQ = opcode::EQ,
-        NEQ = opcode::NEQ,
-        LT = opcode::LT,
-        LE = opcode::LE,
-        GT = opcode::GT,
-        GE = opcode::GE
-    };
-
-    const auto boolOp = [](auto&& argLeft, auto&& argRight, BoolOp op) -> bool {
-        using Tl = std::decay_t<decltype(argLeft)>;
-        using Tr = std::decay_t<decltype(argRight)>;
-
-        if constexpr (std::is_same_v<Tl, bool> && std::is_same_v<Tr, bool>) {
-            switch (op) {
-            case BoolOp::AND:
-                return argLeft && argRight;
-            case BoolOp::OR:
-                return argLeft || argRight;
-            default:
-                break;
-            }
-        }
-
-        if constexpr (std::is_same_v<Tl, std::nullopt_t> && std::is_same_v<Tr, std::nullopt_t>) {
-            switch (op) {
-            case BoolOp::EQ:
-            case BoolOp::LE:
-            case BoolOp::GE:
-                return true;
-            case BoolOp::NEQ:
-            case BoolOp::LT:
-            case BoolOp::GT:
-                return false;
-            default:
-                break;
-            }
-        }
-
-
-        if constexpr ((details::is_any_of_v<Tl, bool, double> && details::is_any_of_v<Tr, bool, double>) ||
-                (std::is_same_v<Tl, std::string> && details::is_any_of_v<Tr, std::string>))
-        {
-			using LType = std::conditional_t<details::is_any_of_v<Tl, bool, double>, double, std::string>;
-			using RType = std::conditional_t<details::is_any_of_v<Tr, bool, double>, double, std::string>;
-
-            switch (op) {
-            case BoolOp::EQ:
-                return static_cast<LType>(argLeft) == static_cast<RType>(argRight);
-            case BoolOp::NEQ:
-                return static_cast<LType>(argLeft) != static_cast<RType>(argRight);
-            case BoolOp::LT:
-                return static_cast<LType>(argLeft) < static_cast<RType>(argRight);
-            case BoolOp::LE:
-                return static_cast<LType>(argLeft) <= static_cast<RType>(argRight);
-            case BoolOp::GT:
-                return static_cast<LType>(argLeft) > static_cast<RType>(argRight);
-            case BoolOp::GE:
-                return static_cast<LType>(argLeft) >= static_cast<RType>(argRight);
-            default:
-                break;
-            }
-        }
-
-        throw std::runtime_error(std::string(opcode::toString(static_cast<opcode::Code>(op))) +
-                                 " is undefined for that argument types");
-    };
-
-    deref([&valueLeft, &op, &toString, &mathOp, &boolOp](auto&& argLeft, auto&& argRight) {
-        using Tl = std::decay_t<decltype(argLeft)>;
-        using Tr = std::decay_t<decltype(argRight)>;
-
+    visitSymbolsPair([&valueLeft, op](const Symbol& symbolLeft, const Symbol& symbolRight) {
         if (opcode::isMathOp(op)) {
-            if constexpr (std::is_same_v<Tl, std::string> || std::is_same_v<Tr, std::string>) {
-                if (op == opcode::ADD) {
-                    valueLeft = toString(argLeft) + toString(argRight);
-                    return;
-                }
-            }
-
-            valueLeft = mathOp(argLeft, argRight, static_cast<MathOp>(op));
+            valueLeft = symbolLeft.operationBinaryMath(symbolRight, op);
         }
-        else {
-            valueLeft = boolOp(argLeft, argRight, static_cast<BoolOp>(op));
+        else if (opcode::isLogicOp(op)) {
+            valueLeft = symbolLeft.operationLogic(symbolRight, op);
+        }
+        else if (opcode::isComparationOp(op)) {
+            valueLeft = symbolLeft.operationCompare(symbolRight, op);
         }
     }, valueLeft, valueRight);
 
@@ -400,10 +232,24 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 				"Pointer stack size is less then 2");
 		}
 
-		if (!std::holds_alternative<bool>(m_stack.back())) {
-			throw std::runtime_error("Unable to read IF arguments. Invalid argument type");
-		}
-        const auto value = *std::get_if<bool>(&m_stack.back());
+
+        bool value = false;
+        visitSymbol([&value](auto&& symbol) {
+		    symbol.visit([&value](auto&& arg) {
+		        using T = std::decay_t<decltype(arg)>;
+
+		        if constexpr (std::is_same_v<T, std::nullopt_t>) {
+		            value = false;
+                    return;
+		        }
+		        else if constexpr (details::is_any_of_v<T, bool, double>) {
+		            value = static_cast<bool>(arg);
+		            return;
+		        }
+
+                throw std::runtime_error("Unable to read IF arguments. Invalid argument type");
+		    });
+		}, m_stack.back());
 		m_stack.pop_back();
 
 		const auto falsePointer = m_pointerStack.top();
@@ -435,7 +281,7 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 
         const auto value = std::get_if<std::string_view>(&m_stack.back());
         if (value == nullptr) {
-            throw std::runtime_error("Unable to read IF arguments. Invalid argument type");
+            throw std::runtime_error("Unable to read CALL arguments. Invalid argument type");
         }
 
         //TODO: call function
@@ -499,7 +345,25 @@ void app::Evaluator::printStack()
     for (size_t i = 0; i < m_stack.size(); ++i) {
         printf("[%zu] ", i);
 
-        std::visit(print, m_stack[i]);
+        std::visit([this](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+
+            if constexpr (std::is_same_v<T, std::string_view>) {
+                const auto it = m_variables.find(arg);
+                if (it == m_variables.end()) {
+                    printf("name: %s", std::string{arg}.c_str());
+                }
+                else {
+                    printf("%s", it->second.getValueCategory() == Symbol::ValueCategory::Lvalue ?
+                        "lvalue " : "rvalue ");
+                    it->second.print();
+                }
+            }
+            else {
+                printf("%s", arg.getValueCategory() == Symbol::ValueCategory::Lvalue ? "lvalue " : "rvalue ");
+                arg.print();
+            }
+        }, m_stack[i]);
 
         printf("\n");
     }

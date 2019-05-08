@@ -15,16 +15,16 @@ namespace app
 
 	class Symbol final
 	{
-		using DataVariant = std::variant<
-			std::nullopt_t,
-			bool, 
-			double, 
-			std::string, 
-			ScriptFunction,
-			CoreObject*,
-			CoreFunction*>;
-
 	public:
+        using DataVariant = std::variant<
+                std::nullopt_t,
+                bool,
+                double,
+                std::string,
+                ScriptFunction,
+                CoreObject*,
+                CoreFunction*>;
+
 		enum class Type
 		{
 			Null,
@@ -37,18 +37,31 @@ namespace app
 			CoreFunction,
 		};
 
-		Symbol();
-		explicit Symbol(bool value);
-		explicit Symbol(double value);
-		explicit Symbol(const std::string& value);
-		explicit Symbol(const ScriptFunction& value);
-		explicit Symbol(CoreObject* value);
-		explicit Symbol(CoreFunction* value);
+		enum class ValueCategory {
+		    Lvalue,
+		    Rvalue
+		};
 
+		explicit Symbol(ValueCategory category);
+        Symbol(std::nullopt_t, ValueCategory category);
+		Symbol(bool value, ValueCategory category);
+		Symbol(double value, ValueCategory category);
+		Symbol(const std::string& value, ValueCategory category);
+		Symbol(const ScriptFunction& value, ValueCategory category);
+		Symbol(CoreObject* value, ValueCategory category);
+		Symbol(CoreFunction* value, ValueCategory category);
+		Symbol(const Symbol& symbol, ValueCategory category);
+
+		void assign(std::nullopt_t);
 		void assign(bool value);
 		void assign(double value);
 		void assign(const std::string& value);
-		void assign(Symbol* symbol);
+		void assign(const Symbol& symbol);
+
+		Symbol operationUnary(opcode::Code op) const;
+        Symbol operationBinaryMath(const Symbol& symbol, opcode::Code op) const;
+        Symbol operationLogic(const Symbol& symbol, opcode::Code op) const;
+        Symbol operationCompare(const Symbol& symbol, opcode::Code op) const;
 
         template<typename Callable>
         void visit(Callable&& f) const
@@ -56,34 +69,18 @@ namespace app
             std::visit(f, m_data);
         }
 
-        template<typename Callable>
-        void visit(Callable&& f) { const_cast<const Symbol*>(this)->visit(f); }
-
-        template<typename Callable>
-        void deref(Callable&& f) const
-        {
-            std::visit([&f](auto&& arg) -> void {
-                using T = std::decay_t<decltype(arg)>;
-
-                if constexpr (dereferencable<T>) {
-                    f(arg);
-                }
-                else {
-                    throw std::runtime_error("Unable to dereference variable");
-                }
-            }, m_data);
-        }
-
-        template<typename Callable>
-        void deref(Callable&& f) { const_cast<const Symbol*>(this)->deref(f); }
+        void print() const;
 
 		Type getType() const;
 
-		bool canBeDereferenced() const;
+        void setValueCategory(ValueCategory category);
+        ValueCategory getValueCategory() const;
 
 	protected:
 		Type m_type;
 		DataVariant m_data;
+
+		ValueCategory m_valueCategory;
 	};
 
 	class CoreObject
