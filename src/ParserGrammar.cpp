@@ -227,8 +227,8 @@ app::ParserGrammar::ParserGrammar()
 	        .set().term(KeywordElse).nonterm(Block)
 	        .generate();
 
-	const auto declareVariable = [](CommandBuffer& cb, SyntaxNode& node, bool push = false) {
-        const Token* token = *std::get_if<const Token *>(&node.children[1]->value);
+	const auto declareVariable = [](CommandBuffer& cb, SyntaxNode& node, bool push = false, size_t offset = 1) {
+        const Token* token = *std::get_if<const Token *>(&node.children[offset]->value);
         cb.push(convert(*token));
 	    cb.push(opcode::DECLVAR);
 
@@ -245,6 +245,12 @@ app::ParserGrammar::ParserGrammar()
                     cb.translate(*node.children[2]);
                     cb.push(opcode::ASSIGN);
 	            })
+            .set().term(KeywordLet).term(KeywordRef).term(Identifier).term(OperatorAssignment).nonterm(Expression)
+                .translate([declareVariable](CommandBuffer& cb, SyntaxNode& node) {
+                    declareVariable(cb, node, true, 2);
+                    cb.translate(*node.children[4]);
+                    cb.push(opcode::ASSIGNREF);
+                })
 	        .generate();
 
 	const auto createBinaryTranslator = [](opcode::Code op) {

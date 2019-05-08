@@ -6,13 +6,14 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 		return;
 	}
 
+	size_t step = 0;
+
 	size_t position = 0;
 	while (position != bytecode.size()) {
 		const auto& item = bytecode[position];
 
-		printf("== step: %zu ==\n", position);
+		printf("== step: %zu ==\n", step++);
 		printStack();
-		printf("\n");
 
 		std::visit([this, &position, &bytecode](auto && arg) {
 			using T = std::decay_t<decltype(arg)>;
@@ -32,6 +33,8 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 				return;
 			}
 			else {
+			    printf("[OP] %s\n", opcode::toString(arg));
+
 				switch (arg) {
 				case opcode::DECLVAR:
 				case opcode::DECLFUN:
@@ -39,7 +42,8 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 					break;
 
 				case opcode::ASSIGN:
-					handleAssign(bytecode, position);
+				case opcode::ASSIGNREF:
+					handleAssign(bytecode, position, arg);
 					break;
 
 				case opcode::POP:
@@ -87,6 +91,8 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 				}
 			}
 		}, item);
+
+        printf("\n");
 	}
 
     printf("== end ==\n");
@@ -128,32 +134,34 @@ void app::Evaluator::handleDecl(const ByteCode& bytecode, size_t& position, opco
 	++position;
 }
 
-void app::Evaluator::handleAssign(const ByteCode& bytecode, size_t& position)
+void app::Evaluator::handleAssign(const ByteCode& bytecode, size_t& position, opcode::Code op)
 {
 	if (m_stack.size() < 2) {
-	    throw std::runtime_error("Unable to read ASSIGN arguments. Stack size is less then 2");
+	    throw std::runtime_error("Unable to read " + std::string{opcode::toString(op)} + " arguments."
+                " Stack size is less then 2");
 	}
 
-	const auto& variableValue = m_stack.back();
+	auto variableValue = m_stack.back();
     m_stack.pop_back();
 
-	const auto variableName = std::get_if<std::string_view>(&m_stack.back());
-	if (variableName == nullptr) {
-        throw std::runtime_error("Unable to read ASSIGN arguments. Invalid argument type");
-	}
+	auto& variable = m_stack.back();
 
-	auto& variable = findVariable(*variableName);
+	visitSymbolsPair([this, op](auto&& argLeft, auto&& argRight) {
+	    if (argLeft.getValueCategory() != Symbol::ValueCategory::Lvalue) {
+	        throw std::runtime_error("Unable to assign value to rvalue");
+	    }
 
-	std::visit([this, &variable](auto&& arg) {
-	    using T = std::decay_t<decltype(arg)>;
+	    if (op == opcode::ASSIGN) {
+	        argLeft.assign(argRight);
+	    }
+	    else if (op == opcode::ASSIGNREF) {
+	        if (argRight.getValueCategory() != Symbol::ValueCategory::Lvalue) {
+                throw std::runtime_error("Unable to get reference of rvalue");
+	        }
 
-	    if constexpr (std::is_same_v<T, std::string_view>) {
-            variable.assign(findVariable(arg));
-        }
-	    else {
-            variable.assign(arg);
-        }
-    }, variableValue);
+	        argLeft = Symbol(&argRight);
+	    }
+    }, variable, variableValue);
 
 	m_stack.pop_back();
 

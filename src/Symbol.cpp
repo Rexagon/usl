@@ -1,5 +1,6 @@
 #include "Symbol.hpp"
 
+#include <stack>
 #include <cassert>
 #include <stdexcept>
 
@@ -31,6 +32,13 @@ namespace details
         else if constexpr (std::is_same_v<T, app::CoreFunction*>) {
             return "[CoreFunction]";
         }
+        else if constexpr (std::is_same_v<T, app::Symbol*>) {
+			std::string result = "[ref] ";
+			arg->visit([&result](auto && arg) {
+				result += details::toString(arg);
+			});
+			return result;
+        }
         else {
             return "Unknown";
         }
@@ -38,42 +46,42 @@ namespace details
 }
 
 app::Symbol::Symbol(ValueCategory category) :
-	m_type(Type::Null), m_data(std::nullopt), m_valueCategory(category)
+	    m_type(Type::Null), m_data(std::nullopt), m_valueCategory(category)
 {
 }
 
 app::Symbol::Symbol(std::nullopt_t, app::Symbol::ValueCategory category) :
-    m_type(Type::Null), m_data(std::nullopt), m_valueCategory(category)
+        m_type(Type::Null), m_data(std::nullopt), m_valueCategory(category)
 {
 }
 
 app::Symbol::Symbol(const bool value, ValueCategory category) :
-	m_type(Type::Bool), m_data(value), m_valueCategory(category)
+	    m_type(Type::Bool), m_data(value), m_valueCategory(category)
 {
 }
 
 app::Symbol::Symbol(const double value, ValueCategory category) :
-	m_type(Type::Number), m_data(value), m_valueCategory(category)
+	    m_type(Type::Number), m_data(value), m_valueCategory(category)
 {
 }
 
 app::Symbol::Symbol(const std::string& value, ValueCategory category) :
-	m_type(Type::String), m_data(value), m_valueCategory(category)
+	    m_type(Type::String), m_data(value), m_valueCategory(category)
 {
 }
 
 app::Symbol::Symbol(const ScriptFunction& value, ValueCategory category) :
-	m_type(Type::ScriptFunction), m_data(value), m_valueCategory(category)
+	    m_type(Type::ScriptFunction), m_data(value), m_valueCategory(category)
 {
 }
 
 app::Symbol::Symbol(CoreObject* value, ValueCategory category) :
-	m_type(Type::CoreObject), m_data(value), m_valueCategory(category)
+	    m_type(Type::CoreObject), m_data(value), m_valueCategory(category)
 {
 }
 
 app::Symbol::Symbol(CoreFunction* value, ValueCategory category) :
-	m_type(Type::CoreFunction), m_data(value), m_valueCategory(category)
+	    m_type(Type::CoreFunction), m_data(value), m_valueCategory(category)
 {
 }
 
@@ -82,35 +90,9 @@ app::Symbol::Symbol(const Symbol& symbol, ValueCategory valueCategory) :
 {
 }
 
-void app::Symbol::assign(std::nullopt_t)
+app::Symbol::Symbol(app::Symbol* symbol) :
+        m_data(symbol), m_type(Type::Reference), m_valueCategory(ValueCategory::Lvalue)
 {
-    m_data = std::nullopt;
-    m_type = Type::Null;
-}
-
-
-void app::Symbol::assign(bool value)
-{
-    m_data = value;
-    m_type = Type ::Bool;
-}
-
-void app::Symbol::assign(double value)
-{
-    m_data = value;
-    m_type = Type::Number;
-}
-
-void app::Symbol::assign(const std::string &value)
-{
-    m_data = value;
-    m_type = Type::String;
-}
-
-void app::Symbol::assign(const Symbol& symbol)
-{
-	m_data = symbol.m_data;
-	m_type = symbol.m_type;
 }
 
 app::Symbol app::Symbol::operationUnary(opcode::Code op) const
@@ -289,4 +271,21 @@ void app::Symbol::setValueCategory(ValueCategory category)
 
 app::Symbol::ValueCategory app::Symbol::getValueCategory() const {
     return m_valueCategory;
+}
+
+app::Symbol app::Symbol::deref() const
+{
+    if (m_valueCategory == ValueCategory::Lvalue) {
+        return *this;
+    }
+
+    if (m_type == Type::Reference) {
+        auto* symbol = std::get<Symbol*>(m_data);
+        return symbol->deref();
+    }
+    else {
+        auto result = *this;
+        result.setValueCategory(ValueCategory::Rvalue);
+        return result;
+    }
 }

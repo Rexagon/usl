@@ -1,21 +1,18 @@
 let test_number = 123 + 1;
 test_number = (test_number + 10) / (-0.5);
 
-test_number = test_number > 10 || test_number == 1;
+(test_number) = test_number > 10 || test_number == 1;
 
-function test_function(first_arg, second_arg, third_arg) {
-	let test = qwe;
-	return "hello world with spaces and strings!";
-}
+let ref test_ref = test_number;
 
-if (test_number > 10) {
-    test_number = 1;
-}
-else {
-    test_number = 123;
-}
+let ref test_ref_b = test_ref;
 
-test_number = 0;
-while (test_number < 10) {
-    test_number = test_number + 1;
-}
+test_ref = test_ref_b + 1;
+
+test_ref = test_ref_b == test_ref && test_number == test_ref_b;
+
+/*function test_function(first_arg, second_arg, third_arg) {
+	return first_arg + " " + second_arg + " " + third_arg;
+}*/
+
+//let res = test_function(1, 2, 3);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdexcept>
 #include "ByteCode.hpp"
 
 namespace app
@@ -22,7 +23,8 @@ namespace app
                 std::string,
                 ScriptFunction,
                 CoreObject*,
-                CoreFunction*>;
+                CoreFunction*,
+                Symbol*>;
 
 		enum class Type
 		{
@@ -34,6 +36,8 @@ namespace app
 
 			CoreObject,
 			CoreFunction,
+
+			Reference
 		};
 
 		enum class ValueCategory {
@@ -51,16 +55,48 @@ namespace app
 		Symbol(CoreFunction* value, ValueCategory category);
 		Symbol(const Symbol& symbol, ValueCategory category);
 
-		void assign(std::nullopt_t);
-		void assign(bool value);
-		void assign(double value);
-		void assign(const std::string& value);
-		void assign(const Symbol& symbol);
+        explicit Symbol(Symbol* symbol);
+
+		template<typename T>
+		void assign(const T& value)
+        {
+            std::visit([this, &value](auto&& arg) {
+                using D = std::decay_t<decltype(arg)>;
+
+                if constexpr (std::is_same_v<D, Symbol*>) {
+                    arg->assign(value);
+                }
+                else if constexpr (details::is_any_of_v<T, std::nullopt_t, bool, double, std::string>) {
+                    m_data = value;
+                    if constexpr (std::is_same_v<T, std::nullopt_t>) {
+                        m_type = Type::Null;
+                    }
+                    else if constexpr (std::is_same_v<T, bool>) {
+                        m_type = Type::Bool;
+                    }
+                    else if constexpr (std::is_same_v<T, double>) {
+                        m_type = Type::Number;
+                    }
+                    else if constexpr (std::is_same_v<T, std::string>) {
+                        m_type = Type::String;
+                    }
+                }
+                else if constexpr (std::is_same_v<T, Symbol>) {
+                    m_data = value.m_data;
+                    m_type = value.m_type;
+                }
+                else {
+                    throw std::runtime_error("Bad assign");
+                }
+            }, m_data);
+        }
 
 		Symbol operationUnary(opcode::Code op) const;
         Symbol operationBinaryMath(const Symbol& symbol, opcode::Code op) const;
         Symbol operationLogic(const Symbol& symbol, opcode::Code op) const;
         Symbol operationCompare(const Symbol& symbol, opcode::Code op) const;
+
+        Symbol deref() const;
 
         template<typename Callable>
         void visit(Callable&& f) const

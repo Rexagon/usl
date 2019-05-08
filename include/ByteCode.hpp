@@ -22,6 +22,7 @@ namespace app
             DECLVAR,	// var, DECLVAR ->
             DECLFUN,    // var, ptr, DECLFUN ->
 			ASSIGN,		// var, val/var, ASSIGN ->
+			ASSIGNREF,  // var, var, ASSIGNREF ->
 			DEREF,		// val/var, DEREF -> val
 
 			POP,		// POP ->

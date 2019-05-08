@@ -9,6 +9,8 @@ const char* app::opcode::toString(size_t code)
         return "DECLFUN";
     case ASSIGN:
         return "ASSIGN";
+    case ASSIGNREF:
+        return "ASSIGNREF";
     case DEREF:
         return "DEREF";
     case POP:
