@@ -51,6 +51,10 @@ const char* app::opcode::toString(size_t code)
         return "CALL";
     case RET:
         return "RET";
+    case PUSHARG:
+        return "PUSHARG";
+    case POPARG:
+        return "POPARG";
     case DEFBLOCK:
         return "DEFBLOCK";
     case DELBLOCK:

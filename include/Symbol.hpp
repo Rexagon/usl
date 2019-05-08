@@ -57,6 +57,8 @@ namespace app
 
         explicit Symbol(Symbol* symbol);
 
+        Symbol deref() const;
+
 		template<typename T>
 		void assign(const T& value)
         {
@@ -95,8 +97,6 @@ namespace app
         Symbol operationBinaryMath(const Symbol& symbol, opcode::Code op) const;
         Symbol operationLogic(const Symbol& symbol, opcode::Code op) const;
         Symbol operationCompare(const Symbol& symbol, opcode::Code op) const;
-
-        Symbol deref() const;
 
         template<typename Callable>
         void visit(Callable&& f) const

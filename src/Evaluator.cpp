@@ -12,8 +12,15 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 	while (position != bytecode.size()) {
 		const auto& item = bytecode[position];
 
-		printf("== step: %zu ==\n", step++);
+		printf("== step: %zu | position: %zu ==\n", step++, position);
 		printStack();
+
+		printf("variables:\n");
+		for (auto& [key, value] : m_variables) {
+		    printf("\t%s: ", std::string{key}.c_str());
+		    value.print();
+		    printf("\n");
+		}
 
 		std::visit([this, &position, &bytecode](auto && arg) {
 			using T = std::decay_t<decltype(arg)>;
@@ -23,10 +30,11 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 					m_pointerStack.push(arg);
 				}
 				else if constexpr (std::is_same_v<T, std::string_view>) {
+				    //printf("EMPLACE VAR: %s\n", std::string{arg}.c_str());
 					m_stack.emplace_back(arg);
 				}
 				else {
-                    m_stack.emplace_back(Symbol{arg, Symbol::ValueCategory::Rvalue} );
+                    m_stack.emplace_back(Symbol{arg, Symbol::ValueCategory::Rvalue});
 				}
 
                 ++position;
@@ -81,6 +89,11 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 					handleControl(bytecode, position, arg);
 					break;
 
+				case opcode::PUSHARG:
+				case opcode::POPARG:
+                    handleArguments(bytecode, position, arg);
+                    break;
+
 				case opcode::DEFBLOCK:
 				case opcode::DELBLOCK:
 					handleBlocks(bytecode, position, arg);
@@ -96,6 +109,14 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 	}
 
     printf("== end ==\n");
+
+    printf("variables:\n");
+    for (auto& [key, value] : m_variables) {
+        printf("\t%s: ", std::string{key}.c_str());
+        value.print();
+        printf("\n");
+    }
+
 	printStack();
 }
 
@@ -113,7 +134,7 @@ void app::Evaluator::handleDecl(const ByteCode& bytecode, size_t& position, opco
 	if (op == opcode::DECLVAR) {
         m_variables.try_emplace(*symbolName, Symbol::ValueCategory::Lvalue);
 	}
-	else if (op == opcode::DECLFUN){
+	else if (op == opcode::DECLFUN) {
 	    if (m_pointerStack.empty()) {
             throw std::runtime_error("Unable to read " + std::string(toString(op)) +
                     " arguments. Pointer stack is empty");
@@ -176,15 +197,8 @@ void app::Evaluator::handleDeref(const app::ByteCode &bytecode, size_t &position
 
     auto& value = m_stack.back();
 
-    std::visit([this, &value](auto&& arg) {
-        using T = std::decay_t<decltype(arg)>;
-
-        if constexpr (std::is_same_v<T, std::string_view>) {
-            value = Symbol{ findVariable(arg), Symbol::ValueCategory::Rvalue };
-        }
-        else {
-            arg.setValueCategory(Symbol::ValueCategory::Rvalue);
-        }
+    visitSymbol([&value](const Symbol& symbol) {
+        value = symbol.deref();
     }, value);
 
     ++position;
@@ -192,11 +206,9 @@ void app::Evaluator::handleDeref(const app::ByteCode &bytecode, size_t &position
 
 void app::Evaluator::handlePop(const ByteCode& bytecode, size_t& position)
 {
-	if (m_stack.empty()) {
-        throw std::runtime_error("Unable complete POP. Stack is empty");
-	}
-
-	m_stack.pop_back();
+	if (!m_stack.empty()) {
+        m_stack.pop_back();
+    }
 
 	++position;
 }
@@ -209,7 +221,7 @@ void app::Evaluator::handleUnaryOperator(const app::ByteCode& bytecode, size_t& 
 
     auto& value = m_stack.back();
 
-    visitSymbol([&value, op](auto&& arg) {
+    visitSymbol([&value, op](const Symbol& arg) {
         value = arg.operationUnary(op);
     }, value);
 
@@ -288,6 +300,10 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 				    "Pointer stack is empty");
 		}
 
+		if (op == opcode::RET) {
+		    m_argumentsStack.clear();
+		}
+
 		const auto pointer = m_pointerStack.top();
 		m_pointerStack.pop();
 
@@ -299,15 +315,23 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 			throw std::runtime_error("Unable to read CALL arguments. Stack is empty");
 		}
 
-        const auto value = std::get_if<std::string_view>(&m_stack.back());
-        if (value == nullptr) {
-            throw std::runtime_error("Unable to read CALL arguments. Invalid argument type");
-        }
+        auto value = m_stack.back();
+		m_stack.pop_back();
 
-        //TODO: call function
+        visitSymbol([this, &position](const Symbol& symbol) {
+            symbol.visit([this, &position](auto&& arg) {
+               using T = std::decay_t<decltype(arg)>;
 
-		m_pointerStack.push(position + 1);
-		++position;
+               if constexpr (std::is_same_v<T, ScriptFunction>) {
+                   m_pointerStack.push(position + 1);
+
+                   position = arg.address;
+               }
+               else {
+                   throw std::runtime_error("Wrong CALL argument type");
+               }
+            });
+        }, value);
 	};
 
 	switch (op) {
@@ -324,6 +348,32 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 	default:
 		break;
 	}
+}
+
+void app::Evaluator::handleArguments(const app::ByteCode& byteCode, size_t& position, opcode::Code op)
+{
+    if (op == opcode::PUSHARG) {
+        if (m_stack.empty()) {
+            throw std::runtime_error("Unable to read PUSHARG arguments. Stack is empty");
+        }
+
+        auto& variable = m_stack.back();
+
+        visitSymbol([this](auto&& symbol) {
+            m_argumentsStack.push_back(symbol);
+            m_stack.pop_back();
+        }, variable);
+    }
+    else if (op == opcode::POPARG) {
+        if (m_argumentsStack.empty()) {
+            throw std::runtime_error("Unable to read POPARG arguments. Arguments stack is empty");
+        }
+
+        m_stack.push_back(m_argumentsStack.front());
+        m_argumentsStack.pop_front();
+    }
+
+    ++position;
 }
 
 void app::Evaluator::handleBlocks(const ByteCode& bytecode, size_t& position, opcode::Code op)

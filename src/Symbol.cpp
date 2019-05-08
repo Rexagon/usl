@@ -95,6 +95,23 @@ app::Symbol::Symbol(app::Symbol* symbol) :
 {
 }
 
+app::Symbol app::Symbol::deref() const
+{
+    if (m_valueCategory == ValueCategory::Rvalue) {
+        return *this;
+    }
+
+    if (m_type == Type::Reference) {
+        auto* symbol = std::get<Symbol*>(m_data);
+        return symbol->deref();
+    }
+    else {
+        auto result = *this;
+        result.setValueCategory(ValueCategory::Rvalue);
+        return result;
+    }
+}
+
 app::Symbol app::Symbol::operationUnary(opcode::Code op) const
 {
     Symbol result(ValueCategory::Rvalue);
@@ -271,21 +288,4 @@ void app::Symbol::setValueCategory(ValueCategory category)
 
 app::Symbol::ValueCategory app::Symbol::getValueCategory() const {
     return m_valueCategory;
-}
-
-app::Symbol app::Symbol::deref() const
-{
-    if (m_valueCategory == ValueCategory::Lvalue) {
-        return *this;
-    }
-
-    if (m_type == Type::Reference) {
-        auto* symbol = std::get<Symbol*>(m_data);
-        return symbol->deref();
-    }
-    else {
-        auto result = *this;
-        result.setValueCategory(ValueCategory::Rvalue);
-        return result;
-    }
 }

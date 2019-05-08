@@ -50,6 +50,9 @@ namespace app
 			CALL,		// var, CALL -> [push current ptr]
 			RET,		// RET -> [pop current ptr]
 
+			PUSHARG,    // val/var, PUSHARG ->
+			POPARG,     // POPARG -> val/var
+
 			DEFBLOCK,	// DEFBLOCK ->
 			DELBLOCK,	// DELBLOCK ->
 

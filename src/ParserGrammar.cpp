@@ -78,6 +78,7 @@ app::ParserGrammar::ParserGrammar()
 	        .set().term(KeywordReturn).nonterm(Expression).term(Semicolon)
                 .translate([](CommandBuffer& cb, SyntaxNode& node) {
                     cb.translate(*node.children[1]);
+                    cb.push(opcode::DEREF);
                     cb.push(opcode::DELBLOCK);
                     cb.push(opcode::RET);
                 })
@@ -94,42 +95,66 @@ app::ParserGrammar::ParserGrammar()
 	        .generate();
 
 	m_rules[FunctionDeclaration] = RulesBuilder()
-	        .set().term(KeywordFunction).term(Identifier).term(ParenthesisOpen).nonterm(FunctionArguments)
-	            .term(ParenthesisClose).nonterm(Block)
-	                .translate([](CommandBuffer& cb, SyntaxNode& node) {
-                        const auto startPosition = cb.createPositionIndex();
-                        const auto endPosition = cb.createPositionIndex();
+	        .set().term(KeywordFunction).term(Identifier).nonterm(FunctionArguments).nonterm(FunctionBlock)
+                .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                    const auto startPosition = cb.createPositionIndex();
+                    const auto endPosition = cb.createPositionIndex();
 
-                        const Token* token = *std::get_if<const Token *>(&node.children[1]->value);
-                        cb.push(convert(*token));
-                        cb.requestPosition(startPosition);
-                        cb.push(opcode::DECLFUN);
-                        cb.requestPosition(endPosition);
-                        cb.push(opcode::JMP);
+                    const auto* token = std::get<const Token *>(node.children[1]->value);
+                    cb.push(convert(*token));
+                    cb.requestPosition(startPosition);
+                    cb.push(opcode::DECLFUN);
+                    cb.requestPosition(endPosition);
+                    cb.push(opcode::JMP);
 
-                        cb.replyPosition(startPosition);
-                        cb.push(opcode::DEFBLOCK);
-                        cb.translate(*node.children[3]);
+                    cb.replyPosition(startPosition);
+                    cb.push(opcode::DEFBLOCK);
+                    cb.translate(*node.children[2]);
 
-                        cb.push(opcode::DELBLOCK);
-                        cb.push(opcode::RET);
-                        cb.replyPosition(endPosition);
-	                })
+                    cb.translate(*node.children[3]);
+
+                    cb.push(opcode::DELBLOCK);
+                    cb.push(opcode::RET);
+                    cb.replyPosition(endPosition);
+                })
             .generate();
 
 	m_rules[FunctionArguments] = RulesBuilder()
-	        .set().empty()
-	        .set().nonterm(FunctionArgument).hide()
+	        .set().term(ParenthesisOpen).term(ParenthesisClose)
+	        .set().term(ParenthesisOpen).nonterm(FunctionArgument).term(ParenthesisClose)
 	        .generate();
 
 	m_rules[FunctionArgument] = RulesBuilder()
-	        .set().term(Identifier).nonterm(CommaFunctionArgument)
+	        .set().nonterm(FunctionArgumentIdentifier).nonterm(CommaFunctionArgument).hide()
 	        .generate();
 
 	m_rules[CommaFunctionArgument] = RulesBuilder()
-	        .set().empty()
-	        .set().term(Comma).term(Identifier).nonterm(CommaFunctionArgument)
+	        .set().empty().hide()
+	        .set().term(Comma).nonterm(FunctionArgumentIdentifier).nonterm(CommaFunctionArgument).hide()
 	        .generate();
+
+    const auto createArgumentIdentifierTranslator = [](size_t offset, bool isReference) {
+        return [offset, isReference](CommandBuffer& cb, SyntaxNode& node) {
+            const auto token = std::get<const Token*>(node.children[offset]->value);
+            cb.push(convert(*token));
+            cb.push(opcode::DECLVAR);
+            cb.push(convert(*token));
+            cb.push(opcode::POPARG);
+            cb.push(isReference ? opcode::ASSIGNREF : opcode::ASSIGN);
+        };
+    };
+
+    m_rules[FunctionArgumentIdentifier] = RulesBuilder()
+            .set().term(Identifier)
+                .translate(createArgumentIdentifierTranslator(0, false))
+            .set().term(KeywordRef).term(Identifier)
+                .translate(createArgumentIdentifierTranslator(1, true))
+            .generate();
+
+    m_rules[FunctionBlock] = RulesBuilder()
+            .set().nonterm(Statement)
+            .set().term(BraceOpen).nonterm(BlockStatement).term(BraceClose)
+            .generate();
 
 	const auto createBlockTranslator = [](bool single) {
 	    return [single](CommandBuffer& cb, SyntaxNode& node) {
@@ -146,7 +171,7 @@ app::ParserGrammar::ParserGrammar()
 
 	m_rules[BlockStatement] = RulesBuilder()
 	        .set().empty()
-	        .set().nonterm(Statement).nonterm(BlockStatement).hide()
+	        .set().nonterm(Statement).nonterm(BlockStatement)
 	        .generate();
 
 	m_rules[Condition] = RulesBuilder()
@@ -228,7 +253,7 @@ app::ParserGrammar::ParserGrammar()
 	        .generate();
 
 	const auto declareVariable = [](CommandBuffer& cb, SyntaxNode& node, bool push = false, size_t offset = 1) {
-        const Token* token = *std::get_if<const Token *>(&node.children[offset]->value);
+        const auto token = std::get<const Token*>(node.children[offset]->value);
         cb.push(convert(*token));
 	    cb.push(opcode::DECLVAR);
 
@@ -343,11 +368,16 @@ app::ParserGrammar::ParserGrammar()
 	        //.set().nonterm(PostfixExpression).term(OperatorIncrement)
 	        //.set().nonterm(PostfixExpression).term(OperatorDecrement)
 	        //.set().nonterm(PostfixExpression).term(StructureReference).term(Identifier)
-	        //.set().nonterm(PostfixExpression).term(ParenthesisOpen).nonterm(CallArguments).term(ParenthesisClose)
+	        .set().nonterm(PostfixExpression).nonterm(CallArguments)
+	            .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                    cb.translate(*node.children[1]);
+	                cb.translate(*node.children[0]);
+	                cb.push(opcode::CALL);
+	            })
 	        .generate();
 
 	const auto translateToken = [](CommandBuffer& cb, SyntaxNode& node) {
-        const Token* token = *std::get_if<const Token *>(&node.children.front()->value);
+        const auto token = std::get<const Token*>(node.children[0]->value);
         cb.push(convert(*token));
     };
 
@@ -361,17 +391,23 @@ app::ParserGrammar::ParserGrammar()
 	        .generate();
 
 	m_rules[CallArguments] = RulesBuilder()
-	        .set().empty()
-	        .set().nonterm(CallArgument).hide()
+	        .set().term(ParenthesisOpen).term(ParenthesisClose)
+	        .set().term(ParenthesisOpen).nonterm(CallArgument).term(ParenthesisClose)
+				.translate([](CommandBuffer& cb, SyntaxNode& node) {
+					for (size_t i = 1; i < node.children.size(); i += 2) {
+						cb.translate(*node.children[i]);
+						cb.push(opcode::PUSHARG);
+					}
+				})
 	        .generate();
 
 	m_rules[CallArgument] = RulesBuilder()
-	        .set().nonterm(Expression).nonterm(CommaCallArgument)
+	        .set().nonterm(Expression).nonterm(CommaCallArgument).hide()
 	        .generate();
 
 	m_rules[CommaCallArgument] = RulesBuilder()
-	        .set().empty()
-	        .set().term(Comma).nonterm(Expression).nonterm(CommaCallArgument)
+	        .set().empty().hide()
+	        .set().term(Comma).nonterm(Expression).nonterm(CommaCallArgument).hide()
 	        .generate();
 
 	finalize();
@@ -453,6 +489,8 @@ const char* app::parser_grammar::getString(const size_t name)
 		return "function_argument";
 	case CommaFunctionArgument: 
 		return "comma_function_argument";
+	case FunctionArgumentIdentifier:
+	    return "function_argument_identifier";
 	case Block: 
 		return "block";
 	case BlockStatement: 

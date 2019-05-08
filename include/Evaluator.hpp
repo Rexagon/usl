@@ -27,6 +27,7 @@ namespace app
 		void handleUnaryOperator(const ByteCode& bytecode, size_t& position, opcode::Code op);
 		void handleBinaryOperator(const ByteCode& bytecode, size_t& position, opcode::Code op);
 		void handleControl(const ByteCode& bytecode, size_t& position, opcode::Code op);
+		void handleArguments(const ByteCode& byteCode, size_t& position, opcode::Code op);
 		void handleBlocks(const ByteCode& bytecode, size_t& position, opcode::Code op);
 
 		template<typename F>
@@ -75,6 +76,7 @@ namespace app
 		std::unordered_map<std::string_view, Symbol> m_variables;
 
 		std::deque<StackItem> m_stack;
+        std::deque<StackItem> m_argumentsStack;
 		std::stack<Pointer> m_pointerStack;
 	};
 }

@@ -1,18 +1,10 @@
-let test_number = 123 + 1;
-test_number = (test_number + 10) / (-0.5);
+function inc(value) {
+    return value + 1;
+}
 
-(test_number) = test_number > 10 || test_number == 1;
+let test = 0;
+test = inc(inc(test));
 
-let ref test_ref = test_number;
+let ref temp = test;
 
-let ref test_ref_b = test_ref;
-
-test_ref = test_ref_b + 1;
-
-test_ref = test_ref_b == test_ref && test_number == test_ref_b;
-
-/*function test_function(first_arg, second_arg, third_arg) {
-	return first_arg + " " + second_arg + " " + third_arg;
-}*/
-
-//let res = test_function(1, 2, 3);
+temp = temp + 1;
