@@ -20,7 +20,7 @@ namespace app
 		void eval(const ByteCode& bytecode);
 
 	private:
-		void handleDecl(const ByteCode& bytecode, size_t& position);
+		void handleDecl(const ByteCode& bytecode, size_t& position, opcode::Code op);
 		void handleAssign(const ByteCode& bytecode, size_t& position);
 		void handleDeref(const ByteCode& bytecode, size_t& position);
 		void handlePop(const ByteCode& bytecode, size_t& position);

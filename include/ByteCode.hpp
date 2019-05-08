@@ -19,7 +19,8 @@ namespace app
 	{
 		enum Code
 		{
-			DECL,		// var, DECL ->
+            DECLVAR,	// var, DECLVAR ->
+            DECLFUN,    // var, ptr, DECLFUN ->
 			ASSIGN,		// var, val/var, ASSIGN ->
 			DEREF,		// val/var, DEREF -> val
 

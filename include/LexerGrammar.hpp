@@ -20,6 +20,7 @@ namespace app
 			KeywordContinue,
 			KeywordFunction,
 			KeywordReturn,
+			KeywordRef,
 
 			Null,
 			Boolean,

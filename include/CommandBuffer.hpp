@@ -1,6 +1,7 @@
 #pragma once
 
 #include <list>
+#include <stack>
 #include <vector>
 #include <variant>
 #include <functional>
@@ -29,11 +30,17 @@ namespace app
         void replyPosition(size_t index);
         void push(const ByteCodeItem& item);
 
+        void pushLoopBounds(size_t startPointerIndex, size_t endPointerIndex);
+        size_t getLoopStartPointerIndex() const;
+        size_t getLoopEndPointerIndex() const;
+        void popLoopBounds();
+
         size_t createPositionIndex();
 
     private:
         std::list<Command> m_commands;
         size_t m_currentPointerIndex = 0;
+        std::stack<std::pair<size_t, size_t>> m_loopBounds;
 
         std::list<Command>::iterator m_currentPosition = m_commands.end();
     };

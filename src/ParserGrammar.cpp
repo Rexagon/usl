@@ -75,16 +75,46 @@ app::ParserGrammar::ParserGrammar()
 	        .set().nonterm(Branch).hide()
 	        .set().nonterm(VariableDeclaration).term(Semicolon).hide()
 	        .set().nonterm(Expression).term(Semicolon).hide()
-	        .set().term(KeywordReturn).nonterm(Expression).term(Semicolon).translate([](auto& cb, auto& node) {
-	            cb.push(opcode::RET);
-	        })
-	        //.set().term(KeywordBreak).nonterm(Semicolon)
-	        //.set().term(KeywordContinue).nonterm(Semicolon)
+	        .set().term(KeywordReturn).nonterm(Expression).term(Semicolon)
+                .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                    cb.translate(*node.children[1]);
+                    cb.push(opcode::DELBLOCK);
+                    cb.push(opcode::RET);
+                })
+	        .set().term(KeywordBreak).term(Semicolon)
+	            .translate([](CommandBuffer& cb, SyntaxNode& node) {
+	                cb.push(cb.getLoopEndPointerIndex());
+	                cb.push(opcode::JMP);
+	            })
+	        .set().term(KeywordContinue).term(Semicolon)
+	            .translate([](CommandBuffer& cb, SyntaxNode& node) {
+	                cb.push(cb.getLoopStartPointerIndex());
+	                cb.push(opcode::JMP);
+	            })
 	        .generate();
 
 	m_rules[FunctionDeclaration] = RulesBuilder()
 	        .set().term(KeywordFunction).term(Identifier).term(ParenthesisOpen).nonterm(FunctionArguments)
 	            .term(ParenthesisClose).nonterm(Block)
+	                .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                        const auto startPosition = cb.createPositionIndex();
+                        const auto endPosition = cb.createPositionIndex();
+
+                        const Token* token = *std::get_if<const Token *>(&node.children[1]->value);
+                        cb.push(convert(*token));
+                        cb.requestPosition(startPosition);
+                        cb.push(opcode::DECLFUN);
+                        cb.requestPosition(endPosition);
+                        cb.push(opcode::JMP);
+
+                        cb.replyPosition(startPosition);
+                        cb.push(opcode::DEFBLOCK);
+                        cb.translate(*node.children[3]);
+
+                        cb.push(opcode::DELBLOCK);
+                        cb.push(opcode::RET);
+                        cb.replyPosition(endPosition);
+	                })
             .generate();
 
 	m_rules[FunctionArguments] = RulesBuilder()
@@ -129,20 +159,28 @@ app::ParserGrammar::ParserGrammar()
 	m_rules[WhileLoop] = RulesBuilder()
 	        .set().term(KeywordWhile).nonterm(Condition).nonterm(Block)
 	            .translate([](CommandBuffer& cb, SyntaxNode& node) {
-                    const auto testPosition = cb.createPositionIndex();
                     const auto startPosition = cb.createPositionIndex();
+                    const auto bodyPosition = cb.createPositionIndex();
                     const auto endPosition = cb.createPositionIndex();
 
-                    cb.replyPosition(testPosition);
+                    cb.translate([startPosition, endPosition](CommandBuffer& cb) {
+                        cb.pushLoopBounds(startPosition, endPosition);
+                    });
+
+                    cb.replyPosition(startPosition);
                     cb.translate(*node.children[1]);
-                    cb.requestPosition(startPosition);
+                    cb.requestPosition(bodyPosition);
                     cb.requestPosition(endPosition);
                     cb.push(opcode::IF);
-                    cb.replyPosition(startPosition);
+                    cb.replyPosition(bodyPosition);
                     cb.translate(*node.children[2]);
-                    cb.requestPosition(testPosition);
+                    cb.requestPosition(startPosition);
                     cb.push(opcode::JMP);
                     cb.replyPosition(endPosition);
+
+                    cb.translate([](CommandBuffer& cb) {
+                       cb.popLoopBounds();
+                    });
 	            })
 	        .generate();
 
@@ -192,7 +230,7 @@ app::ParserGrammar::ParserGrammar()
 	const auto declareVariable = [](CommandBuffer& cb, SyntaxNode& node, bool push = false) {
         const Token* token = *std::get_if<const Token *>(&node.children[1]->value);
         cb.push(convert(*token));
-	    cb.push(opcode::DECL);
+	    cb.push(opcode::DECLVAR);
 
 	    if (push) {
             cb.push(convert(*token));

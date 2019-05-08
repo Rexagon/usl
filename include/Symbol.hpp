@@ -10,7 +10,6 @@ namespace app
 	struct ScriptFunction final
 	{
 		size_t address;
-		uint8_t argc;
 	};
 
 	class Symbol final
@@ -93,5 +92,8 @@ namespace app
 	{
 	public:
 		virtual ~CoreFunction() = default;
+
+    protected:
+
 	};
 }

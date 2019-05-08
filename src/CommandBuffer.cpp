@@ -112,6 +112,27 @@ void app::CommandBuffer::push(const ByteCodeItem& item)
     m_commands.insert(m_currentPosition, item);
 }
 
+void app::CommandBuffer::pushLoopBounds(size_t startPointerIndex, size_t endPointerIndex)
+{
+    m_loopBounds.emplace(startPointerIndex, endPointerIndex);
+}
+
+size_t app::CommandBuffer::getLoopStartPointerIndex() const {
+    assert(!m_loopBounds.empty());
+    return m_loopBounds.top().first;
+}
+
+size_t app::CommandBuffer::getLoopEndPointerIndex() const {
+    assert(!m_loopBounds.empty());
+    return m_loopBounds.top().second;
+}
+
+void app::CommandBuffer::popLoopBounds()
+{
+    assert(!m_loopBounds.empty());
+    m_loopBounds.pop();
+}
+
 size_t app::CommandBuffer::createPositionIndex() {
     return m_currentPointerIndex++;
 }

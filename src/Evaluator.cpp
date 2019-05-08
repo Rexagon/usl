@@ -33,8 +33,9 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 			}
 			else {
 				switch (arg) {
-				case opcode::DECL:
-					handleDecl(bytecode, position);
+				case opcode::DECLVAR:
+				case opcode::DECLFUN:
+					handleDecl(bytecode, position, arg);
 					break;
 
 				case opcode::ASSIGN:
@@ -92,21 +93,34 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 	printStack();
 }
 
-void app::Evaluator::handleDecl(const ByteCode& bytecode, size_t& position)
+void app::Evaluator::handleDecl(const ByteCode& bytecode, size_t& position, opcode::Code op)
 {
 	if (m_stack.empty()) {
-	    throw std::runtime_error("Unable to read DECL arguments. Stack is empty");
+	    throw std::runtime_error("Unable to read " + std::string(toString(op)) + " arguments. Stack is empty");
 	}
 
-	const auto variableName = std::get_if<std::string_view>(&m_stack.back());
-	if (variableName == nullptr) {
-        throw std::runtime_error("Unable to read DECL arguments. Invalid argument type");
+	const auto symbolName = std::get_if<std::string_view>(&m_stack.back());
+	if (symbolName == nullptr) {
+        throw std::runtime_error("Unable to read " + std::string(toString(op)) + " arguments. Invalid argument type");
 	}
 
-    m_variables.try_emplace(*variableName, Symbol::ValueCategory::Lvalue);
+	if (op == opcode::DECLVAR) {
+        m_variables.try_emplace(*symbolName, Symbol::ValueCategory::Lvalue);
+	}
+	else if (op == opcode::DECLFUN){
+	    if (m_pointerStack.empty()) {
+            throw std::runtime_error("Unable to read " + std::string(toString(op)) +
+                    " arguments. Pointer stack is empty");
+	    }
+
+        const auto pointer = m_pointerStack.top();
+        m_pointerStack.pop();
+
+        m_variables.try_emplace(*symbolName, ScriptFunction{pointer}, Symbol::ValueCategory::Lvalue);
+	}
 
 	if (!m_blocks.empty()) {
-	    m_blocks.back().emplace(*variableName);
+	    m_blocks.back().emplace(*symbolName);
 	}
 
 	m_stack.pop_back();
@@ -229,9 +243,8 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 		}
 		if (m_pointerStack.size() < 2) {
 			throw std::runtime_error("Unable to read IF arguments. "
-				"Pointer stack size is less then 2");
+				    "Pointer stack size is less then 2");
 		}
-
 
         bool value = false;
         visitSymbol([&value](auto&& symbol) {
@@ -264,7 +277,7 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 	const auto opJmp = [this, &position](opcode::Code op) {
 		if (m_pointerStack.empty()) {
 			throw std::runtime_error("Unable to read " + std::string(toString(op)) + " arguments. "
-				"Pointer stack is empty");
+				    "Pointer stack is empty");
 		}
 
 		const auto pointer = m_pointerStack.top();
@@ -275,8 +288,7 @@ void app::Evaluator::handleControl(const ByteCode& bytecode, size_t& position, o
 
 	const auto opCall = [this, &position]() {
 		if (m_stack.empty()) {
-			throw std::runtime_error("Unable to read CALL arguments. "
-				"Stack is empty");
+			throw std::runtime_error("Unable to read CALL arguments. Stack is empty");
 		}
 
         const auto value = std::get_if<std::string_view>(&m_stack.back());

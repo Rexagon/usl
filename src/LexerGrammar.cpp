@@ -17,6 +17,7 @@ const app::RegexArray& app::buildRegexes()
 		(KeywordContinue,		std::regex{"^continue"}),
 		(KeywordFunction,		std::regex{"^function"}),
 		(KeywordReturn,			std::regex{"^return"}),
+        (KeywordRef,            std::regex{"^ref"}),
 
 		(Null,					std::regex{"^null"}),
 		(Boolean,				std::regex{"^(?:true)|(?:false)"}),

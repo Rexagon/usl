@@ -3,8 +3,10 @@
 const char* app::opcode::toString(size_t code)
 {
     switch (code) {
-    case DECL:
-        return "DECL";
+    case DECLVAR:
+        return "DECLVAR";
+    case DECLFUN:
+        return "DECLFUN";
     case ASSIGN:
         return "ASSIGN";
     case DEREF:
