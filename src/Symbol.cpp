@@ -240,6 +240,16 @@ app::Symbol app::Symbol::operationCompare(const Symbol& symbol, const OpCode op)
                 return;
             }
         }
+        else if constexpr (std::is_same_v<Tl, std::nullopt_t> || std::is_same_v<Tr, std::nullopt_t>) {
+            if (op == OpCode::EQ) {
+                result.assign(false);
+                return;
+            }
+            if (op == OpCode::NEQ) {
+                result.assign(true);
+                return;
+            }
+        }
         else if constexpr ((details::is_any_of_v<Tl, bool, double> && details::is_any_of_v<Tr, bool, double>) ||
             (std::is_same_v<Tl, std::string> && details::is_any_of_v<Tr, std::string>))
         {
