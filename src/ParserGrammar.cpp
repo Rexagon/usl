@@ -74,7 +74,8 @@ app::ParserGrammar::ParserGrammar()
         .set().nonterm(ForLoop).hide()
         .set().nonterm(DoWhileLoop).hide()
         .set().nonterm(WhileLoop).hide()
-        .set().nonterm(Branch).hide()
+        .set().nonterm(BranchIf).hide()
+        .set().nonterm(BranchIfElse).hide()
         .set().nonterm(VariableDeclaration).term(Semicolon).hide()
         .set().nonterm(VariableDeclarationEmpty).term(Semicolon)
             .translate([](CommandBuffer & cb, SyntaxNode & node) {
@@ -246,7 +247,7 @@ app::ParserGrammar::ParserGrammar()
 
     m_rules[BlockStatement] = RulesBuilder{}
         .set().empty()
-        .set().nonterm(Statement).nonterm(BlockStatement)
+        .set().nonterm(BlockStatement).nonterm(Statement)
         .generate();
 
     m_rules[Condition] = RulesBuilder{}
@@ -310,7 +311,7 @@ app::ParserGrammar::ParserGrammar()
             })
         .generate();
 
-    m_rules[Branch] = RulesBuilder{}
+    m_rules[BranchIf] = RulesBuilder{}
         .set().term(KeywordIf).nonterm(Condition).nonterm(Block)
             .translate([](CommandBuffer & cb, SyntaxNode & node) {
                 const auto truePosition = cb.createPositionIndex();
@@ -324,6 +325,9 @@ app::ParserGrammar::ParserGrammar()
                 cb.translate(*node.children[2]);
                 cb.replyPosition(falsePosition);
             })
+        .generate();
+
+    m_rules[BranchIfElse] = RulesBuilder{}
         .set().term(KeywordIf).nonterm(Condition).nonterm(Block).nonterm(ElseBranch)
             .translate([](CommandBuffer & cb, SyntaxNode & node) {
                 const auto truePosition = cb.createPositionIndex();
@@ -627,8 +631,10 @@ const char* app::parser_grammar::getString(const size_t name)
         return "do_while_loop";
     case WhileLoop:
         return "while_loop";
-    case Branch:
-        return "branch";
+    case BranchIf:
+        return "branch_if";
+    case BranchIfElse:
+        return "branch_if_else";
     case ElseBranch:
         return "else_branch";
     case VariableDeclaration:
