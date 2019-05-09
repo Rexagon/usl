@@ -293,15 +293,7 @@ void app::Symbol::print() const
         using T = std::decay_t<decltype(arg)>;
         constexpr auto isString = std::is_same_v<T, std::string>;
 
-        if constexpr (isString) {
-            printf("\"");
-        }
-
         printf("%s", details::toString(arg).c_str());
-
-        if constexpr (isString) {
-            printf("\"");
-        }
     });
 }
 

@@ -22,14 +22,6 @@ while (first > 10) {
     }
 }
 
-let ref counter_reference_test = counter;
-
-let uninitialized;
-
-if (uninitialized == null) {
-    counter_reference_test = "It also support strings. " + counter_reference_test;
-}
-
 let bool_type_test = false;
 bool_type_test = first == 20;
 
@@ -44,8 +36,25 @@ function factorial(num) {
     return rval;
 }
 
-let i = 0;
-while (i < 100) {
-    std.println(factorial(i));
-    inc(i, 1);
+for (let k = 0; k < 10; k = k + 1) {
+    std.println(factorial(k));
+}
+
+let ref counter_reference_test = counter;
+
+let uninitialized;
+
+if (uninitialized == null) {
+    counter_reference_test = "It also support strings. " + counter_reference_test;
+}
+
+std.println("Enter 'exit' or something else:");
+
+while (true) {
+    std.print("> ");
+    let input = std.readln();
+    if (input == "exit") {
+        break;
+    }
+    std.println("");
 }

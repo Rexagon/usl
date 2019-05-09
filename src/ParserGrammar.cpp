@@ -71,9 +71,16 @@ app::ParserGrammar::ParserGrammar()
         .generate();
 
     m_rules[Statement] = RulesBuilder{}
+        .set().nonterm(ForLoop).hide()
         .set().nonterm(WhileLoop).hide()
         .set().nonterm(Branch).hide()
         .set().nonterm(VariableDeclaration).term(Semicolon).hide()
+        .set().nonterm(VariableDeclarationEmpty).term(Semicolon)
+            .translate([](CommandBuffer & cb, SyntaxNode & node) {
+                const auto token = std::get<const Token*>(node.children[1]->value);
+                cb.push(convert(*token));
+                cb.push(OpCode::DECLVAR);
+            })
         .set().nonterm(Expression).term(Semicolon).hide()
         .set().term(KeywordReturn).nonterm(Expression).term(Semicolon)
             .translate([](CommandBuffer& cb, SyntaxNode& node) {
@@ -156,6 +163,66 @@ app::ParserGrammar::ParserGrammar()
     m_rules[FunctionBlock] = RulesBuilder{}
         .set().nonterm(Statement)
         .set().term(BraceOpen).nonterm(BlockStatement).term(BraceClose)
+        .generate();
+
+    m_rules[ForLoop] = RulesBuilder{}
+        .set().term(KeywordFor).nonterm(ForCondition).nonterm(Block)
+            .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                const auto conditionStartPosition = cb.createPositionIndex();
+                const auto blockStartPosition = cb.createPositionIndex();
+                const auto blockEndPosition = cb.createPositionIndex();
+
+                cb.push(OpCode::DEFBLOCK);
+
+                cb.translate([conditionStartPosition, blockEndPosition](CommandBuffer & cb) {
+                    cb.pushLoopBounds(conditionStartPosition, blockEndPosition);
+                });
+
+                const auto& condition = *node.children[1];
+                cb.translate(*condition.children[1]);
+
+                cb.replyPosition(conditionStartPosition);
+                cb.translate(*condition.children[3]);
+                cb.requestPosition(blockStartPosition);
+                cb.requestPosition(blockEndPosition);
+                cb.push(OpCode::IF);
+
+                cb.replyPosition(blockStartPosition);
+                cb.translate(*node.children[2]);
+
+                cb.translate(*condition.children[5]);
+
+                cb.requestPosition(conditionStartPosition);
+                cb.push(OpCode::JMP);
+
+                cb.replyPosition(blockEndPosition);
+
+                cb.translate([](CommandBuffer & cb) {
+                    cb.popLoopBounds();
+                });
+
+                cb.push(OpCode::DELBLOCK);
+            })
+        .generate();
+
+    m_rules[ForCondition] = RulesBuilder{}
+        .set().term(ParenthesisOpen).nonterm(ForVariableDeclaration).term(Semicolon).nonterm(ForVariableCondition)
+            .term(Semicolon).nonterm(ForVariableMutation).term(ParenthesisClose)
+        .generate();
+
+    m_rules[ForVariableDeclaration] = RulesBuilder{}
+        .set().empty()
+        .set().nonterm(VariableDeclaration).hide()
+        .generate();
+
+    m_rules[ForVariableCondition] = RulesBuilder{}
+        .set().empty()
+        .set().nonterm(Expression).hide()
+        .generate();
+
+    m_rules[ForVariableMutation] = RulesBuilder{}
+        .set().empty()
+        .set().nonterm(Expression).hide()
         .generate();
 
     const auto createBlockTranslator = [](bool single) {
@@ -254,32 +321,39 @@ app::ParserGrammar::ParserGrammar()
         .set().term(KeywordElse).nonterm(Block)
         .generate();
 
-    const auto declareVariable = [](CommandBuffer& cb, SyntaxNode& node, const bool push = false,
-        const size_t offset = 1) 
-    {
-        const auto token = std::get<const Token*>(node.children[offset]->value);
-        cb.push(convert(*token));
-        cb.push(OpCode::DECLVAR);
-
-        if (push) {
-            cb.push(convert(*token));
-        }
-    };
-
     m_rules[VariableDeclaration] = RulesBuilder{}
-        .set().term(KeywordLet).term(Identifier).translate(declareVariable)
         .set().term(KeywordLet).term(Identifier).term(OperatorAssignment).nonterm(Expression)
-            .translate([declareVariable](CommandBuffer& cb, SyntaxNode& node) {
-                declareVariable(cb, *node.children[0], true);
-                cb.translate(*node.children[2]);
-                cb.push(OpCode::ASSIGN);
+            .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                if (node.children.size() < 4) {
+                    RuleSet::defaultTranslator(cb, node);
+                }
+                else {
+                    const auto token = std::get<const Token*>(node.children[1]->value);
+                    cb.push(convert(*token));
+                    cb.push(OpCode::DECLVAR);
+                    cb.push(convert(*token));
+                    cb.translate(*node.children[3]);
+                    cb.push(OpCode::ASSIGN);
+                }
             })
         .set().term(KeywordLet).term(KeywordRef).term(Identifier).term(OperatorAssignment).nonterm(Expression)
-            .translate([declareVariable](CommandBuffer& cb, SyntaxNode& node) {
-                declareVariable(cb, node, true, 2);
-                cb.translate(*node.children[4]);
-                cb.push(OpCode::ASSIGNREF);
+            .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                if (node.children.size() < 5) {
+                    RuleSet::defaultTranslator(cb, node);
+                }
+                else {
+                    const auto token = std::get<const Token*>(node.children[2]->value);
+                    cb.push(convert(*token));
+                    cb.push(OpCode::DECLVAR);
+                    cb.push(convert(*token));
+                    cb.translate(*node.children[4]);
+                    cb.push(OpCode::ASSIGNREF);
+                }
             })
+        .generate();
+
+    m_rules[VariableDeclarationEmpty] = RulesBuilder{}
+        .set().term(KeywordLet).term(Identifier).hide()
         .generate();
 
     const auto createBinaryTranslator = [](const OpCode op) {
@@ -501,6 +575,16 @@ const char* app::parser_grammar::getString(const size_t name)
         return "comma_function_argument";
     case FunctionArgumentIdentifier:
         return "function_argument_identifier";
+    case ForLoop:
+        return "for_loop";
+    case ForCondition:
+        return "for_condition";
+    case ForVariableDeclaration:
+        return "for_variable_declaration";
+    case ForVariableCondition:
+        return "for_variable_condition";
+    case ForVariableMutation:
+        return "for_variable_mutation";
     case Block:
         return "block";
     case BlockStatement:

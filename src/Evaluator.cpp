@@ -507,10 +507,12 @@ void app::Evaluator::printState(bool showVariables)
         printf("\n");
     }
 
-    printf("variables:\n");
-    for (auto& [key, value] : m_variables) {
-        printf("\t%s: ", std::string{ key }.c_str());
-        value.print();
-        printf("\n");
+    if (showVariables) {
+        printf("variables:\n");
+        for (auto& [key, value] : m_variables) {
+            printf("\t%s: ", std::string{ key }.c_str());
+            value.print();
+            printf("\n");
+        }
     }
 }
