@@ -5,63 +5,63 @@
 #include "Position.hpp"
 
 app::Lexer::Lexer() :
-	m_regexes(buildRegexes())
+    m_regexes(buildRegexes())
 {
 }
 
-std::vector<app::Token> app::Lexer::run(std::string_view text) const
+std::vector<app::Token> app::Lexer::run(const std::string_view text) const
 {
-	std::vector<Token> result;
+    std::vector<Token> result;
 
-	RegexMask invalidExpressions;
+    RegexMask invalidExpressions;
 
-	Position begin{ &*text.begin(), &*text.end() };
-	Position end = begin;
+    Position begin{ &*text.begin(), &*text.end() };
+    auto end = begin;
 
-	while (true) {
-		const auto lastCharacter = !end.hasMore();
+    while (true) {
+        const auto lastCharacter = !end.hasMore();
 
-		RegexMask nextInvalidExpressions;
-		if (lastCharacter) {
-			nextInvalidExpressions.flip();
-		}
-		else {
-			const std::string currentToken{ Position::toString(begin, end + 1) };
+        RegexMask nextInvalidExpressions;
+        if (lastCharacter) {
+            nextInvalidExpressions.flip();
+        }
+        else {
+            const std::string currentToken{ Position::toString(begin, end + 1) };
 
-			for (size_t i = 0; i < lexer_grammar::TOKEN_COUNT; ++i) {
-				nextInvalidExpressions.set(i,
-					!std::regex_match(currentToken, m_regexes[i]));
-			}
-		}
+            for (size_t i = 0; i < lexer_grammar::TOKEN_COUNT; ++i) {
+                nextInvalidExpressions.set(i,
+                    !std::regex_match(currentToken, m_regexes[i]));
+            }
+        }
 
-		if (nextInvalidExpressions.all() && (begin != end))
-		{
-			size_t tokenType = lexer_grammar::Invalid;
+        if (nextInvalidExpressions.all() && (begin != end))
+        {
+            size_t tokenType = lexer_grammar::Invalid;
 
-			for (size_t i = 0; i < lexer_grammar::TOKEN_COUNT; ++i) {
-				if (!invalidExpressions.test(i)) {
-					tokenType = i;
-					break;
-				}
-			}
+            for (size_t i = 0; i < lexer_grammar::TOKEN_COUNT; ++i) {
+                if (!invalidExpressions.test(i)) {
+                    tokenType = i;
+                    break;
+                }
+            }
 
-			if (!lexer_grammar::isUseless(tokenType)) {
-				result.emplace_back(tokenType, Position::toString(begin, end));
-			}
+            if (!lexer_grammar::isUseless(tokenType)) {
+                result.emplace_back(tokenType, Position::toString(begin, end));
+            }
 
-			invalidExpressions.reset();
-			begin = end;
+            invalidExpressions.reset();
+            begin = end;
 
-			continue;
-		}
+            continue;
+        }
 
-		if (lastCharacter) {
-			break;
-		}
+        if (lastCharacter) {
+            break;
+        }
 
-		invalidExpressions = nextInvalidExpressions;
-		++end;
-	}
+        invalidExpressions = nextInvalidExpressions;
+        ++end;
+    }
 
-	return result;
+    return result;
 }

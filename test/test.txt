@@ -3,5 +3,7 @@ function inc(ref value) {
 }
 
 let test = 0;
-inc(test);
+
+let ref second = test;
+inc(second);
 inc(test);

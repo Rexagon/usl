@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <vector>
 #include <variant>
 #include <optional>
 
@@ -15,87 +14,80 @@ namespace details {
 
 namespace app
 {
-	namespace opcode
-	{
-		enum Code
-		{
-            DECLVAR,	// var, DECLVAR ->
-            DECLFUN,    // var, ptr, DECLFUN ->
-			ASSIGN,		// var, val/var, ASSIGN ->
-			ASSIGNREF,  // var, var, ASSIGNREF ->
-			DEREF,		// val/var, DEREF -> val
+    enum class OpCode
+    {
+        DECLVAR,    // var, DECLVAR ->
+        DECLFUN,    // var, ptr, DECLFUN ->
+        ASSIGN,     // var, val/var, ASSIGN ->
+        ASSIGNREF,  // var, var, ASSIGNREF ->
+        DEREF,      // val/var, DEREF -> val
 
-			POP,		// POP ->
+        POP,        // POP ->
 
-			NOT,		// val/var, NOT -> val
-			UNM,		// val/var, UNM -> val
+        NOT,        // val/var, NOT -> val
+        UNM,        // val/var, UNM -> val
 
-			ADD,		// val/var, val/var, ADD -> val
-			SUB,		// val/var, val/var, SUB -> val
-			MUL,		// val/var, val/var, MUL -> val
-			DIV,		// val/var, val/var, DIV -> val
+        ADD,        // val/var, val/var, ADD -> val
+        SUB,        // val/var, val/var, SUB -> val
+        MUL,        // val/var, val/var, MUL -> val
+        DIV,        // val/var, val/var, DIV -> val
 
-			AND,		// val/var, val/var, AND -> val
-			OR,			// val/var, val/var, OR -> val
+        AND,        // val/var, val/var, AND -> val
+        OR,         // val/var, val/var, OR -> val
 
-			EQ,			// val/var, val/var, EQ -> val
-			NEQ,		// val/var, val/var, NEQ -> val
-			LT,			// val/var, val/var, LT -> val
-			LE,			// val/var, val/var, LE -> val
-			GT,			// val/var, val/var, GT -> val
-			GE,			// val/var, val/var, GE -> val
+        EQ,         // val/var, val/var, EQ -> val
+        NEQ,        // val/var, val/var, NEQ -> val
+        LT,         // val/var, val/var, LT -> val
+        LE,         // val/var, val/var, LE -> val
+        GT,         // val/var, val/var, GT -> val
+        GE,         // val/var, val/var, GE -> val
 
-			IF,			// bool, ptr (if true), ptr (if false), IF ->
-			JMP,		// ptr, JMP ->
-			CALL,		// var, CALL -> [push current ptr]
-			RET,		// RET -> [pop current ptr]
+        IF,         // bool, ptr (if true), ptr (if false), IF ->
+        JMP,        // ptr, JMP ->
+        CALL,       // var, CALL -> [push current ptr]
+        RET,        // RET -> [pop current ptr]
 
-			PUSHARG,    // val/var, PUSHARG ->
-			POPARG,     // POPARG -> val/var
+        PUSHARG,    // val/var, PUSHARG ->
+        POPARG,     // POPARG -> val/var
 
-			DEFBLOCK,	// DEFBLOCK ->
-			DELBLOCK,	// DELBLOCK ->
+        DEFBLOCK,	// DEFBLOCK ->
+        DELBLOCK,	// DELBLOCK ->
 
-			Count,
-		};
+        Count,
+    };
 
-		constexpr auto OPCODE_COUNT = Count;
+    constexpr auto OPCODE_COUNT = OpCode::Count;
 
-		constexpr bool isMathOp(app::opcode::Code op)
-		{
-			return (op >= ADD) && (op <= DIV);
-		}
+    constexpr bool isUnaryMathOp(const OpCode op)
+    {
+        return (op >= OpCode::NOT) && (op <= OpCode::UNM);
+    }
 
-		constexpr bool isLogicOp(app::opcode::Code op)
-		{
-			return (op >= AND) && (op <= OR);
-		}
+    constexpr bool isBinaryMathOp(const OpCode op)
+    {
+        return (op >= OpCode::ADD) && (op <= OpCode::DIV);
+    }
 
-        constexpr bool isComparationOp(app::opcode::Code op)
-        {
-            return (op >= EQ) && (op <= GE);
-        }
+    constexpr bool isLogicOp(const OpCode op)
+    {
+        return (op >= OpCode::AND) && (op <= OpCode::OR);
+    }
 
-		constexpr bool isControlOp(Code op)
-		{
-			return (op >= IF) && (op <= RET);
-		}
+    constexpr bool isComparisonOp(const OpCode op)
+    {
+        return (op >= OpCode::EQ) && (op <= OpCode::GE);
+    }
 
-		const char* toString(size_t code);
-	}
+    constexpr bool isControlOp(const OpCode op)
+    {
+        return (op >= OpCode::IF) && (op <= OpCode::RET);
+    }
 
-	using Pointer = size_t;
+    std::string toString(OpCode code);
 
-	using ByteCodeItem = std::variant<
-	        std::nullopt_t,
-	        bool,
-	        double,
-	        std::string,
-	        std::string_view,
-	        opcode::Code,
-	        Pointer>;
+    using Pointer = size_t;
 
-	void print(const ByteCodeItem& item);
+    using ByteCodeItem = std::variant<std::nullopt_t, bool, double, std::string, std::string_view, OpCode, Pointer>;
 
-	using ByteCode = std::vector<ByteCodeItem>;
+    void print(const ByteCodeItem & item);
 }

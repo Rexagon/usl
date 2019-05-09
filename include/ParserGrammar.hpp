@@ -7,66 +7,66 @@
 
 namespace app
 {
-	namespace parser_grammar {
-		enum RuleName
-		{
-			Program,
-			GeneralStatement,
-			Statement,
-			FunctionDeclaration,
-			FunctionArguments,
-			FunctionArgument,
-			CommaFunctionArgument,
+    namespace parser_grammar {
+        enum RuleName
+        {
+            Program,
+            GeneralStatement,
+            Statement,
+            FunctionDeclaration,
+            FunctionArguments,
+            FunctionArgument,
+            CommaFunctionArgument,
             FunctionArgumentIdentifier,
             FunctionBlock,
             Block,
-			BlockStatement,
-			Condition,
-			WhileLoop,
-			Branch,
-			ElseBranch,
-			VariableDeclaration,
-			Expression,
-			LogicalOrExpression,
-			LogicalAndExpression,
-			EqualityExpression,
-			RelationalExpression,
-			AdditiveExpression,
-			MultiplicativeExpression,
-			UnaryExpression,
-			PostfixExpression,
-			PrimaryExpression,
-			CallArguments,
-			CallArgument,
-			CommaCallArgument,
+            BlockStatement,
+            Condition,
+            WhileLoop,
+            Branch,
+            ElseBranch,
+            VariableDeclaration,
+            Expression,
+            LogicalOrExpression,
+            LogicalAndExpression,
+            EqualityExpression,
+            RelationalExpression,
+            AdditiveExpression,
+            MultiplicativeExpression,
+            UnaryExpression,
+            PostfixExpression,
+            PrimaryExpression,
+            CallArguments,
+            CallArgument,
+            CommaCallArgument,
 
-			Count,
-		};
+            Count,
+        };
 
-		constexpr auto RULE_COUNT = Count;
+        constexpr auto RULE_COUNT = Count;
 
-		constexpr auto STARTING_RULE = Program;
+        constexpr auto STARTING_RULE = Program;
 
-		const char* getString(size_t name);
-	}
+        const char* getString(size_t name);
+    }
 
-	class ParserGrammar final
-	{
-	public:
-		std::vector<EarleyItem> generateStartingEarleyItems() const;
-		std::vector<EarleyItem> generateEarleyItems(size_t name, size_t origin) const;
+    class ParserGrammar final
+    {
+    public:
+        std::vector<EarleyItem> generateStartingEarleyItems() const;
+        std::vector<EarleyItem> generateEarleyItems(size_t name, size_t origin) const;
 
-		bool isNullable(size_t name);
+        bool isNullable(size_t name);
 
-		const Rules& operator[](size_t name) const;
+        const Rules& operator[](size_t name) const;
 
-		static const ParserGrammar& create();
+        static const ParserGrammar& create();
 
-	private:
-		ParserGrammar();
-		void finalize();
+    private:
+        ParserGrammar();
+        void finalize();
 
-		std::array<Rules, parser_grammar::RULE_COUNT> m_rules;
-		std::unordered_set<size_t> m_nullableRules;
-	};
+        std::array<Rules, parser_grammar::RULE_COUNT> m_rules;
+        std::unordered_set<size_t> m_nullableRules;
+    };
 }

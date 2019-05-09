@@ -9,13 +9,13 @@
 
 namespace app
 {
-	struct Term;
-	struct NonTerm;
-	struct RuleSet;
+    struct Term;
+    struct NonTerm;
+    struct RuleSet;
 
-	class EarleyItem;
+    class EarleyItem;
 
-	using RuleVariant = std::variant<Term, NonTerm>;
+    using RuleVariant = std::variant<Term, NonTerm>;
     using CompletedItem = std::pair<const EarleyItem*, size_t>; // Item and its end
 
     struct SyntaxNode
@@ -31,49 +31,48 @@ namespace app
         static void printTree(const SyntaxNode& root);
     };
 
-	class Rules final
-	{
-	public:
-	    Rules() = default;
-	    explicit Rules(const std::vector<RuleSet>& ruleSets);
+    class Rules final
+    {
+    public:
+        Rules() = default;
+        explicit Rules(const std::vector<RuleSet>& ruleSets);
 
-		void setName(size_t name);
+        void setName(size_t name);
 
-		std::vector<EarleyItem> generateEarleyItems(size_t begin) const;
+        std::vector<EarleyItem> generateEarleyItems(size_t begin) const;
 
-		const std::vector<RuleSet>& getRuleSets() const;
+        const std::vector<RuleSet>& getRuleSets() const;
 
-	private:
-		size_t m_name = -1;
-		std::vector<RuleSet> m_sets;
-	};
+    private:
+        size_t m_name = -1;
+        std::vector<RuleSet> m_sets;
+    };
 
-	struct Term final
-	{
-		bool operator==(const Term& other) const;
+    struct Term final
+    {
+        bool operator==(const Term& other) const;
 
-		size_t type;
-	};
+        size_t type;
+    };
 
-	struct NonTerm final
-	{
-		bool operator==(const NonTerm& other) const;
+    struct NonTerm final
+    {
+        bool operator==(const NonTerm& other) const;
 
-		size_t name;
-	};
+        size_t name;
+    };
 
-	struct RuleSet final
-	{
-	    using Translator = std::function<void(CommandBuffer&, SyntaxNode& node)>;
+    struct RuleSet final
+    {
+        using Translator = std::function<void(CommandBuffer&, SyntaxNode& node)>;
         static void defaultTranslator(CommandBuffer& cb, SyntaxNode& node);
 
-		RuleSet() = default;
+        RuleSet() = default;
 
-		bool operator==(const RuleSet& other) const;
+        bool operator==(const RuleSet& other) const;
 
-		std::vector<RuleVariant> rules;
-		Translator translator = &RuleSet::defaultTranslator;
-		bool isImportant = true;
-
-	};
+        std::vector<RuleVariant> rules;
+        Translator translator = &RuleSet::defaultTranslator;
+        bool isImportant = true;
+    };
 }

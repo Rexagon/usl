@@ -1,7 +1,6 @@
 #include "CommandBuffer.hpp"
 
 #include <cassert>
-#include <numeric>
 #include <unordered_map>
 
 #include "Rules.hpp"
@@ -9,7 +8,7 @@
 std::vector<app::ByteCodeItem> app::CommandBuffer::generate()
 {
     for (auto it = m_commands.begin(); it != m_commands.end();) {
-        std::visit([this, &it](auto&& arg) {
+        std::visit([this, &it](auto && arg) {
             using T = std::decay_t<decltype(arg)>;
 
             constexpr auto isTask = std::is_same_v<T, Task>;
@@ -17,7 +16,7 @@ std::vector<app::ByteCodeItem> app::CommandBuffer::generate()
 
             if constexpr (isTask || isNode) {
                 m_currentPosition = it;
-                m_currentPosition++;
+                ++m_currentPosition;
 
                 if constexpr (isTask) {
                     arg(*this);
@@ -38,7 +37,7 @@ std::vector<app::ByteCodeItem> app::CommandBuffer::generate()
 
     size_t position = 0;
     for (auto it = m_commands.begin(); it != m_commands.end();) {
-        std::visit([this, &it, &replies, &position](auto&& arg) {
+        std::visit([this, &it, &replies, &position](auto && arg) {
             using T = std::decay_t<decltype(arg)>;
 
             if constexpr (std::is_same_v<T, PointerReply>) {
@@ -56,11 +55,11 @@ std::vector<app::ByteCodeItem> app::CommandBuffer::generate()
         }, *it);
     }
 
-    std::vector<app::ByteCodeItem> result;
+    std::vector<ByteCodeItem> result;
     result.reserve(m_commands.size());
 
     for (const auto& command : m_commands) {
-        std::visit([&result, &replies](auto&& arg) {
+        std::visit([&result, &replies](auto && arg) {
             using T = std::decay_t<decltype(arg)>;
 
             if constexpr (std::is_same_v<T, PointerRequest>) {
@@ -77,10 +76,6 @@ std::vector<app::ByteCodeItem> app::CommandBuffer::generate()
             else {
                 throw std::runtime_error("Bad grammar");
             }
-
-            printf("[%3zu] ", result.size() - 1);
-            print(result.back());
-            printf("\n");
         }, command);
     }
 
@@ -92,17 +87,17 @@ void app::CommandBuffer::translate(Task task)
     m_commands.insert(m_currentPosition, task);
 }
 
-void app::CommandBuffer::translate(app::SyntaxNode& task)
+void app::CommandBuffer::translate(SyntaxNode& task)
 {
     m_commands.insert(m_currentPosition, &task);
 }
 
-void app::CommandBuffer::requestPosition(size_t index)
+void app::CommandBuffer::requestPosition(const size_t index)
 {
     m_commands.insert(m_currentPosition, PointerRequest{ index });
 }
 
-void app::CommandBuffer::replyPosition(size_t index)
+void app::CommandBuffer::replyPosition(const size_t index)
 {
     m_commands.insert(m_currentPosition, PointerReply{ index });
 }

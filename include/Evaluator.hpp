@@ -2,7 +2,6 @@
 
 #include <deque>
 #include <stack>
-#include <stdexcept>
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
@@ -11,31 +10,30 @@
 
 namespace app
 {
-
     class Evaluator final
     {
         using StackItem = std::variant<Symbol, std::string_view>;
 
     public:
-		void eval(const ByteCode& bytecode);
+        void eval(const std::vector<ByteCodeItem>& byteCode);
 
         Symbol& findVariable(std::string_view name);
 
-        void pushFunctionArgument(Symbol symbol);
+        void pushFunctionArgument(const Symbol& symbol);
         Symbol popFunctionArgument();
 
-	private:
-		void handleDecl(const ByteCode& bytecode, size_t& position, opcode::Code op);
-		void handleAssign(const ByteCode& bytecode, size_t& position, opcode::Code op);
-		void handleDeref(const ByteCode& bytecode, size_t& position);
-		void handlePop(const ByteCode& bytecode, size_t& position);
-		void handleUnaryOperator(const ByteCode& bytecode, size_t& position, opcode::Code op);
-		void handleBinaryOperator(const ByteCode& bytecode, size_t& position, opcode::Code op);
-		void handleControl(const ByteCode& bytecode, size_t& position, opcode::Code op);
-		void handleArguments(const ByteCode& byteCode, size_t& position, opcode::Code op);
-		void handleBlocks(const ByteCode& bytecode, size_t& position, opcode::Code op);
+    private:
+        void handleDecl(OpCode op);
+        void handleAssign(OpCode op);
+        void handleDeref();
+        void handlePop();
+        void handleUnaryOperator(OpCode op);
+        void handleBinaryOperator(OpCode op);
+        void handleControl(OpCode op);
+        void handleArguments(OpCode op);
+        void handleBlocks(OpCode op);
 
-		template<typename F>
+        template<typename F>
         void visitSymbol(F&& visitor, StackItem& item)
         {
             std::visit([this, &visitor](auto&& arg) {
@@ -75,11 +73,13 @@ namespace app
 
         void printState();
 
-		std::vector<std::unordered_set<std::string_view>> m_blocks;
-		std::unordered_map<std::string_view, Symbol> m_variables;
+        size_t m_position = 0;
 
-		std::deque<StackItem> m_stack;
-        std::deque<StackItem> m_argumentsStack;
-		std::stack<Pointer> m_pointerStack;
-	};
+        std::vector<std::unordered_set<std::string_view>> m_blocks;
+        std::unordered_map<std::string_view, Symbol> m_variables;
+
+        std::deque<StackItem> m_stack;
+        std::deque<Symbol> m_argumentsStack;
+        std::stack<Pointer> m_pointerStack;
+    };
 }

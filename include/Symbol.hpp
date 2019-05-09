@@ -1,69 +1,74 @@
 #pragma once
 
+#include <memory>
 #include <stdexcept>
 #include <unordered_map>
+
 #include "ByteCode.hpp"
 
 namespace app
 {
-	class CoreObject;
-	class CoreFunction;
+    class CoreObject;
+    class CoreFunction;
 
-	struct ScriptFunction final
-	{
-		size_t address;
-	};
+    using CoreObjectPtr = std::shared_ptr<CoreObject>;
+    using CoreFunctionPtr = std::shared_ptr<CoreFunction>;
 
-	class Symbol final
-	{
-	public:
+    struct ScriptFunction final
+    {
+        size_t address;
+    };
+
+    class Symbol final
+    {
+    public:
         using DataVariant = std::variant<
-                std::nullopt_t,
-                bool,
-                double,
-                std::string,
-                ScriptFunction,
-                CoreObject*,
-                CoreFunction*,
-                Symbol*>;
+            std::nullopt_t,
+            bool,
+            double,
+            std::string,
+            ScriptFunction,
+            CoreObjectPtr,
+            CoreFunctionPtr,
+            Symbol*>;
 
-		enum class Type
-		{
-			Null,
-			Bool,
-			Number,
-			String,
-			ScriptFunction,
+        enum class Type
+        {
+            Null,
+            Bool,
+            Number,
+            String,
+            ScriptFunction,
 
-			CoreObject,
-			CoreFunction,
+            CoreObject,
+            CoreFunction,
 
-			Reference
-		};
+            Reference
+        };
 
-		enum class ValueCategory {
-		    Lvalue,
-		    Rvalue
-		};
+        enum class ValueCategory {
+            Lvalue,
+            Rvalue
+        };
 
-		explicit Symbol(ValueCategory category);
+        explicit Symbol(ValueCategory category);
         Symbol(std::nullopt_t, ValueCategory category);
-		Symbol(bool value, ValueCategory category);
-		Symbol(double value, ValueCategory category);
-		Symbol(const std::string& value, ValueCategory category);
-		Symbol(const ScriptFunction& value, ValueCategory category);
-		Symbol(CoreObject* value, ValueCategory category);
-		Symbol(CoreFunction* value, ValueCategory category);
-		Symbol(const Symbol& symbol, ValueCategory category);
+        Symbol(bool value, ValueCategory category);
+        Symbol(double value, ValueCategory category);
+        Symbol(const std::string& value, ValueCategory category);
+        Symbol(const ScriptFunction& value, ValueCategory category);
+        Symbol(CoreObject* value, ValueCategory category);
+        Symbol(CoreFunction* value, ValueCategory category);
+        Symbol(const Symbol& symbol, ValueCategory category);
 
         explicit Symbol(Symbol* symbol);
 
         Symbol deref() const;
 
-		template<typename T>
-		void assign(const T& value)
+        template<typename T>
+        void assign(const T& value)
         {
-            std::visit([this, &value](auto&& arg) {
+            std::visit([this, &value](auto && arg) {
                 using D = std::decay_t<decltype(arg)>;
 
                 if constexpr (std::is_same_v<D, Symbol*>) {
@@ -94,10 +99,10 @@ namespace app
             }, m_data);
         }
 
-		Symbol operationUnary(opcode::Code op) const;
-        Symbol operationBinaryMath(const Symbol& symbol, opcode::Code op) const;
-        Symbol operationLogic(const Symbol& symbol, opcode::Code op) const;
-        Symbol operationCompare(const Symbol& symbol, opcode::Code op) const;
+        Symbol operationUnary(OpCode op) const;
+        Symbol operationBinaryMath(const Symbol& symbol, OpCode op) const;
+        Symbol operationLogic(const Symbol& symbol, OpCode op) const;
+        Symbol operationCompare(const Symbol& symbol, OpCode op) const;
 
         template<typename Callable>
         void visit(Callable&& f) const
@@ -107,35 +112,35 @@ namespace app
 
         void print() const;
 
-		Type getType() const;
+        Type getType() const;
 
         void setValueCategory(ValueCategory category);
         ValueCategory getValueCategory() const;
 
-	protected:
-		Type m_type;
-		DataVariant m_data;
+    protected:
+        Type m_type;
+        DataVariant m_data;
 
-		ValueCategory m_valueCategory;
-	};
+        ValueCategory m_valueCategory;
+    };
 
-	class CoreObject
-	{
-	public:
-		virtual ~CoreObject() = default;
+    class CoreObject
+    {
+    public:
+        virtual ~CoreObject() = default;
 
-		Symbol getMember(std::string_view name) const;
+        Symbol getMember(std::string_view name) const;
 
     private:
-	    std::unordered_map<std::string_view, Symbol> m_members;
-	};
+        std::unordered_map<std::string_view, Symbol> m_members;
+    };
 
-	class CoreFunction
-	{
-	public:
-		virtual ~CoreFunction() = default;
+    class CoreFunction
+    {
+    public:
+        virtual ~CoreFunction() = default;
 
     protected:
 
-	};
+    };
 }

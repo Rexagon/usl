@@ -1,70 +1,70 @@
 #include "ByteCode.hpp"
 
-const char* app::opcode::toString(size_t code)
+std::string app::toString(const OpCode code)
 {
     switch (code) {
-    case DECLVAR:
+    case OpCode::DECLVAR:
         return "DECLVAR";
-    case DECLFUN:
+    case OpCode::DECLFUN:
         return "DECLFUN";
-    case ASSIGN:
+    case OpCode::ASSIGN:
         return "ASSIGN";
-    case ASSIGNREF:
+    case OpCode::ASSIGNREF:
         return "ASSIGNREF";
-    case DEREF:
+    case OpCode::DEREF:
         return "DEREF";
-    case POP:
+    case OpCode::POP:
         return "POP";
-    case NOT:
+    case OpCode::NOT:
         return "NOT";
-    case UNM:
+    case OpCode::UNM:
         return "UNM";
-    case ADD:
+    case OpCode::ADD:
         return "ADD";
-    case SUB:
+    case OpCode::SUB:
         return "SUB";
-    case MUL:
+    case OpCode::MUL:
         return "MUL";
-    case DIV:
+    case OpCode::DIV:
         return "DIV";
-    case AND:
+    case OpCode::AND:
         return "AND";
-    case OR:
+    case OpCode::OR:
         return "OR";
-    case EQ:
+    case OpCode::EQ:
         return "EQ";
-    case NEQ:
+    case OpCode::NEQ:
         return "NEQ";
-    case LT:
+    case OpCode::LT:
         return "LT";
-    case LE:
+    case OpCode::LE:
         return "LE";
-    case GT:
+    case OpCode::GT:
         return "GT";
-    case GE:
+    case OpCode::GE:
         return "GE";
-	case IF:
+	case OpCode::IF:
 		return "IF";
-    case JMP:
+    case OpCode::JMP:
         return "JMP";
-    case CALL:
+    case OpCode::CALL:
         return "CALL";
-    case RET:
+    case OpCode::RET:
         return "RET";
-    case PUSHARG:
+    case OpCode::PUSHARG:
         return "PUSHARG";
-    case POPARG:
+    case OpCode::POPARG:
         return "POPARG";
-    case DEFBLOCK:
+    case OpCode::DEFBLOCK:
         return "DEFBLOCK";
-    case DELBLOCK:
+    case OpCode::DELBLOCK:
         return "DELBLOCK";
     default:
         return "Unknown";
     }
 }
 
-void app::print(const app::ByteCodeItem & item)
+void app::print(const ByteCodeItem & item)
 {
     std::visit([](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
@@ -84,8 +84,8 @@ void app::print(const app::ByteCodeItem & item)
         else if constexpr (std::is_same_v<T, std::string_view>) {
             printf("var: %s", std::string(arg).c_str());
         }
-        else if constexpr (std::is_same_v<T, opcode::Code>) {
-            printf("op: %s", std::string(opcode::toString(arg)).c_str());
+        else if constexpr (std::is_same_v<T, OpCode>) {
+            printf("op: %s", toString(arg).c_str());
         }
         else if constexpr (std::is_same_v<T, Pointer >) {
             printf("ptr: %zu", arg);

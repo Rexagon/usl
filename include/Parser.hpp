@@ -4,24 +4,24 @@
 
 namespace app
 {
-	class Parser final
-	{
-		using StateSet = std::vector<EarleyItem>;
-		using StateSets = std::vector<StateSet>;
+    class Parser final
+    {
+        using StateSet = std::vector<EarleyItem>;
+        using StateSets = std::vector<StateSet>;
 
-	public:
-		Parser();
+    public:
+        Parser();
 
-		std::vector<ByteCodeItem> parse(const std::vector<Token>& tokens);
+        std::vector<ByteCodeItem> parse(const std::vector<Token>& tokens);
 
-	private:
-		void scan(size_t i, size_t j, const Token& token);
-		void predict(size_t i, size_t j, const ParserGrammar& g);
-		void complete(size_t i, size_t j);
+    private:
+        void scan(size_t i, size_t j, const Token& token);
+        void predict(size_t i, size_t j, const ParserGrammar& g);
+        void complete(size_t i, size_t j);
 
-		static void tryEmplace(StateSet& stateSet, const EarleyItem& item);
+        static void tryEmplace(StateSet& stateSet, const EarleyItem& item);
 
-		StateSets m_stateSets;
-		const ParserGrammar& m_grammar;
-	};
+        StateSets m_stateSets;
+        const ParserGrammar& m_grammar;
+    };
 }

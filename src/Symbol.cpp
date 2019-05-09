@@ -33,11 +33,11 @@ namespace details
             return "[CoreFunction]";
         }
         else if constexpr (std::is_same_v<T, app::Symbol*>) {
-			std::string result = "[ref] ";
-			arg->visit([&result](auto && arg) {
-				result += details::toString(arg);
-			});
-			return result;
+            std::string result{ "[ref] " };
+            arg->visit([&result](auto && arg) {
+                result += details::toString(arg);
+            });
+            return result;
         }
         else {
             return "Unknown";
@@ -45,55 +45,55 @@ namespace details
     }
 }
 
-app::Symbol::Symbol(ValueCategory category) :
-	    m_type(Type::Null), m_data(std::nullopt), m_valueCategory(category)
+app::Symbol::Symbol(const ValueCategory category) :
+    m_type(Type::Null), m_data(std::nullopt), m_valueCategory(category)
 {
 }
 
-app::Symbol::Symbol(std::nullopt_t, app::Symbol::ValueCategory category) :
-        m_type(Type::Null), m_data(std::nullopt), m_valueCategory(category)
+app::Symbol::Symbol(std::nullopt_t, const ValueCategory category) :
+    m_type(Type::Null), m_data(std::nullopt), m_valueCategory(category)
 {
 }
 
-app::Symbol::Symbol(const bool value, ValueCategory category) :
-	    m_type(Type::Bool), m_data(value), m_valueCategory(category)
+app::Symbol::Symbol(const bool value, const ValueCategory category) :
+    m_type(Type::Bool), m_data(value), m_valueCategory(category)
 {
 }
 
-app::Symbol::Symbol(const double value, ValueCategory category) :
-	    m_type(Type::Number), m_data(value), m_valueCategory(category)
+app::Symbol::Symbol(const double value, const ValueCategory category) :
+    m_type(Type::Number), m_data(value), m_valueCategory(category)
 {
 }
 
-app::Symbol::Symbol(const std::string& value, ValueCategory category) :
-	    m_type(Type::String), m_data(value), m_valueCategory(category)
+app::Symbol::Symbol(const std::string& value, const ValueCategory category) :
+    m_type(Type::String), m_data(value), m_valueCategory(category)
 {
 }
 
-app::Symbol::Symbol(const ScriptFunction& value, ValueCategory category) :
-	    m_type(Type::ScriptFunction), m_data(value), m_valueCategory(category)
+app::Symbol::Symbol(const ScriptFunction& value, const ValueCategory category) :
+    m_type(Type::ScriptFunction), m_data(value), m_valueCategory(category)
 {
 }
 
-app::Symbol::Symbol(CoreObject* value, ValueCategory category) :
-	    m_type(Type::CoreObject), m_data(value), m_valueCategory(category)
+app::Symbol::Symbol(CoreObject* value, const ValueCategory category) :
+    m_type(Type::CoreObject), m_data(value), m_valueCategory(category)
 {
 }
 
-app::Symbol::Symbol(CoreFunction* value, ValueCategory category) :
-	    m_type(Type::CoreFunction), m_data(value), m_valueCategory(category)
+app::Symbol::Symbol(CoreFunction* value, const ValueCategory category) :
+    m_type(Type::CoreFunction), m_data(value), m_valueCategory(category)
 {
 }
 
-app::Symbol::Symbol(const Symbol& symbol, ValueCategory valueCategory) :
-        m_data(symbol.m_data), m_type(symbol.m_type), m_valueCategory(valueCategory)
+app::Symbol::Symbol(const Symbol& symbol, const ValueCategory category) :
+    m_type(symbol.m_type), m_data(symbol.m_data), m_valueCategory(category)
 {
 }
 
-app::Symbol::Symbol(app::Symbol* symbol) :
-        m_data(symbol), m_type(Type::Reference), m_valueCategory(ValueCategory::Lvalue)
+app::Symbol::Symbol(Symbol* symbol) :
+    m_type(Type::Reference), m_data(symbol), m_valueCategory(ValueCategory::Lvalue)
 {
-    if (symbol->getType() == Symbol::Type::Reference) {
+    if (symbol->getType() == Type::Reference) {
         m_data = std::get<Symbol*>(symbol->m_data);
     }
 }
@@ -108,92 +108,147 @@ app::Symbol app::Symbol::deref() const
         auto* symbol = std::get<Symbol*>(m_data);
         return symbol->deref();
     }
-    else {
-        auto result = *this;
-        result.setValueCategory(ValueCategory::Rvalue);
-        return result;
-    }
+
+    auto result = *this;
+    result.setValueCategory(ValueCategory::Rvalue);
+    return result;
 }
 
-app::Symbol app::Symbol::operationUnary(opcode::Code op) const
+app::Symbol app::Symbol::operationUnary(const OpCode op) const
 {
-    Symbol result(ValueCategory::Rvalue);
-    std::visit([this, &result, op](auto&& arg) {
+    assert(isUnaryMathOp(op));
+
+    Symbol result{ ValueCategory::Rvalue };
+    std::visit([&result, op](auto && arg) {
         using T = std::decay_t<decltype(arg)>;
 
         if constexpr (std::is_same_v<T, std::nullopt_t>) {
-            if (op == opcode::NEQ) {
+            if (op == OpCode::NEQ) {
                 result.assign(true);
                 return;
             }
         }
         if constexpr (std::is_same_v<T, bool> || std::is_same_v<T, double>) {
             switch (op) {
-            case opcode::NOT:
+            case OpCode::NOT:
                 result.assign(!static_cast<bool>(arg));
                 return;
-            case opcode::UNM:
+            case OpCode::UNM:
                 result.assign(-static_cast<double>(arg));
                 return;
             default:
-                assert(0);
                 return;
             }
         }
 
-        throw std::runtime_error("Wrong UNM argument type");
+        throw std::runtime_error{ "Wrong " + toString(op) + " argument type" };
     }, m_data);
 
     return result;
 }
 
-app::Symbol app::Symbol::operationLogic(const app::Symbol &symbol, app::opcode::Code op) const
+app::Symbol app::Symbol::operationBinaryMath(const Symbol& symbol, const OpCode op) const
 {
-    Symbol result(ValueCategory::Rvalue);
-    std::visit([this, &result, op](auto&& argLeft, auto&& argRight) {
+    assert(isBinaryMathOp(op));
+
+    Symbol result{ ValueCategory::Rvalue };
+    std::visit([&result, op](auto && argLeft, auto && argRight) {
         using Tl = std::decay_t<decltype(argLeft)>;
         using Tr = std::decay_t<decltype(argRight)>;
 
+        if constexpr (std::is_same_v<Tl, std::string> || std::is_same_v<Tr, std::string>) {
+            if (op == OpCode::ADD) {
+                result.assign(details::toString(argLeft) + details::toString(argRight));
+                return;
+            }
+        }
         if constexpr (details::is_any_of_v<Tl, bool, double> && details::is_any_of_v<Tr, bool, double>) {
             switch (op) {
-            case opcode::AND:
-                result.assign(argLeft && argRight);
+            case OpCode::ADD:
+                result.assign(static_cast<double>(argLeft) + static_cast<double>(argRight));
                 return;
-            case opcode::OR:
-                result.assign(argLeft || argRight);
+            case OpCode::SUB:
+                result.assign(static_cast<double>(argLeft) - static_cast<double>(argRight));
+                return;
+            case OpCode::MUL:
+                result.assign(static_cast<double>(argLeft) * static_cast<double>(argRight));
+                return;
+            case OpCode::DIV:
+                result.assign(static_cast<double>(argLeft) / static_cast<double>(argRight));
                 return;
             default:
-                assert(0);
                 return;
             }
         }
 
-        throw std::runtime_error("Wrong OR argument types");
+        throw std::runtime_error{ "Wrong " + toString(op) + " argument types" };
     }, m_data, symbol.m_data);
 
     return result;
 }
 
-app::Symbol app::Symbol::operationCompare(const Symbol& symbol, opcode::Code op) const
+app::Symbol app::Symbol::operationLogic(const Symbol& symbol, const OpCode op) const 
 {
-    Symbol result(ValueCategory::Rvalue);
-    std::visit([this, &result, op](auto&& argLeft, auto&& argRight) {
+    assert(isLogicOp(op));
+
+    Symbol result{ ValueCategory::Rvalue };
+    std::visit([&result, op](auto && argLeft, auto && argRight) {
+        using Tl = std::decay_t<decltype(argLeft)>;
+        using Tr = std::decay_t<decltype(argRight)>;
+
+        if constexpr (details::is_any_of_v<Tl, bool, double> && details::is_any_of_v<Tr, bool, double>) {
+            switch (op) {
+            case OpCode::AND:
+                result.assign(argLeft && argRight);
+                return;
+            case OpCode::OR:
+                result.assign(argLeft || argRight);
+                return;
+            default:
+                return;
+            }
+        }
+
+        throw std::runtime_error{ "Wrong " + toString(op) + " argument types" };
+    }, m_data, symbol.m_data);
+
+    return result;
+}
+
+app::Symbol app::Symbol::operationCompare(const Symbol& symbol, const OpCode op) const
+{
+    assert(isComparisonOp(op));
+
+    Symbol result{ ValueCategory::Rvalue };
+    std::visit([&result, op](auto && argLeft, auto && argRight) {
         using Tl = std::decay_t<decltype(argLeft)>;
         using Tr = std::decay_t<decltype(argRight)>;
 
         if constexpr (std::is_same_v<Tl, std::nullopt_t> && std::is_same_v<Tr, std::nullopt_t>) {
-            result.assign(true);
-            return;
+            switch (op) {
+            case OpCode::EQ:
+            case OpCode::LE:
+            case OpCode::GE:
+                result.assign(true);
+                return;
+            case OpCode::NEQ:
+            case OpCode::LT:
+            case OpCode::GT:
+                result.assign(false);
+                return;
+            default:
+                return;
+            }
         }
         else if constexpr ((details::is_any_of_v<Tl, bool, double> && details::is_any_of_v<Tr, bool, double>) ||
-                           (std::is_same_v<Tl, std::string> && details::is_any_of_v<Tr, std::string>))
+            (std::is_same_v<Tl, std::string> && details::is_any_of_v<Tr, std::string>))
         {
             if constexpr (std::is_same_v<Tl, bool> && std::is_same_v<Tr, bool>) {
-                if (op == opcode::EQ) {
+                if (op == OpCode::EQ) {
                     result.assign(argLeft == argRight);
                     return;
                 }
-                else if (op == opcode::NEQ) {
+                if (op == OpCode::NEQ) {
                     result.assign(argLeft != argRight);
                     return;
                 }
@@ -203,70 +258,30 @@ app::Symbol app::Symbol::operationCompare(const Symbol& symbol, opcode::Code op)
             using RType = std::conditional_t<details::is_any_of_v<Tr, bool, double>, double, std::string>;
 
             switch (op) {
-            case opcode::EQ:
+            case OpCode::EQ:
                 result.assign(static_cast<LType>(argLeft) == static_cast<RType>(argRight));
                 return;
-            case opcode::NEQ:
+            case OpCode::NEQ:
                 result.assign(static_cast<LType>(argLeft) != static_cast<RType>(argRight));
                 return;
-            case opcode::LT:
+            case OpCode::LT:
                 result.assign(static_cast<LType>(argLeft) < static_cast<RType>(argRight));
                 return;
-            case opcode::LE:
+            case OpCode::LE:
                 result.assign(static_cast<LType>(argLeft) <= static_cast<RType>(argRight));
                 return;
-            case opcode::GT:
+            case OpCode::GT:
                 result.assign(static_cast<LType>(argLeft) > static_cast<RType>(argRight));
                 return;
-            case opcode::GE:
+            case OpCode::GE:
                 result.assign(static_cast<LType>(argLeft) >= static_cast<RType>(argRight));
                 return;
             default:
-                assert(0);
                 return;
             }
         }
 
-        throw std::runtime_error("Wrong " + std::string(opcode::toString(op)) + " argument types");
-    }, m_data, symbol.m_data);
-
-    return result;
-}
-
-app::Symbol app::Symbol::operationBinaryMath(const app::Symbol &symbol, opcode::Code op) const
-{
-    Symbol result(ValueCategory::Rvalue);
-    std::visit([this, &result, op](auto&& argLeft, auto&& argRight) {
-        using Tl = std::decay_t<decltype(argLeft)>;
-        using Tr = std::decay_t<decltype(argRight)>;
-
-        if constexpr (std::is_same_v<Tl, std::string> || std::is_same_v<Tr, std::string>) {
-            if (op == opcode::ADD) {
-                result.assign(details::toString(argLeft) + details::toString(argRight));
-                return;
-            }
-        }
-        if constexpr (details::is_any_of_v<Tl, bool, double> && details::is_any_of_v<Tr, bool, double>) {
-            switch (op) {
-            case opcode::ADD:
-                result.assign(static_cast<double>(argLeft) + static_cast<double>(argRight));
-                return;
-            case opcode::SUB:
-                result.assign(static_cast<double>(argLeft) - static_cast<double>(argRight));
-                return;
-            case opcode::MUL:
-                result.assign(static_cast<double>(argLeft) * static_cast<double>(argRight));
-                return;
-            case opcode::DIV:
-                result.assign(static_cast<double>(argLeft) / static_cast<double>(argRight));
-                return;
-            default:
-                assert(0);
-                return;
-            }
-        }
-
-        throw std::runtime_error("Wrong " + std::string(opcode::toString(op)) + " argument types");
+        throw std::runtime_error{ "Wrong " + toString(op) + " argument types" };
     }, m_data, symbol.m_data);
 
     return result;
@@ -274,17 +289,28 @@ app::Symbol app::Symbol::operationBinaryMath(const app::Symbol &symbol, opcode::
 
 void app::Symbol::print() const
 {
-    visit([](auto&& arg) {
-       printf("%s", details::toString(arg).c_str());
+    visit([](auto && arg) {
+        using T = std::decay_t<decltype(arg)>;
+        constexpr auto isString = std::is_same_v<T, std::string>;
+
+        if constexpr (isString) {
+            printf("\"");
+        }
+
+        printf("%s", details::toString(arg).c_str());
+
+        if constexpr (isString) {
+            printf("\"");
+        }
     });
 }
 
 app::Symbol::Type app::Symbol::getType() const
 {
-	return m_type;
+    return m_type;
 }
 
-void app::Symbol::setValueCategory(ValueCategory category)
+void app::Symbol::setValueCategory(const ValueCategory category)
 {
     m_valueCategory = category;
 }
