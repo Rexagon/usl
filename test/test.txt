@@ -36,8 +36,8 @@ function factorial(num) {
     return rval;
 }
 
-for (let k = 0; k < 10; k = k + 1) {
-    std.println(factorial(k));
+for (let value = 0; value < 10; inc(value, 1)) {
+    std.println(factorial(value));
 }
 
 let ref counter_reference_test = counter;

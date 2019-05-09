@@ -6,6 +6,7 @@
 app::Evaluator::Evaluator(const bool loggingEnabled) :
     m_loggingEnabled(loggingEnabled)
 {
+    m_blocks.emplace_back();
 }
 
 void app::Evaluator::eval(const std::vector<ByteCodeItem>& byteCode)
@@ -121,17 +122,26 @@ void app::Evaluator::push(const Symbol& symbol)
 
 app::Symbol& app::Evaluator::findVariable(const std::string_view name)
 {
-    const auto it = m_variables.find(name);
-    if (it == m_variables.end()) {
-        throw std::runtime_error{ "Unable to find variable: '" + std::string(name) + "'" };
+    for (auto block = m_blocks.rbegin(); block != m_blocks.rend(); ++block) {
+        const auto it = block->find(name);
+        if (it != block->end()) {
+            return it->second;
+        }        
     }
 
-    return it->second;
+    throw std::runtime_error{ "Unable to find variable: '" + std::string(name) + "'" };
 }
 
 bool app::Evaluator::hasVariable(const std::string_view name) const
 {
-    return m_variables.find(name) == m_variables.end();
+    for (auto block = m_blocks.rbegin(); block != m_blocks.rend(); ++block) {
+        const auto it = block->find(name);
+        if (it != block->end()) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void app::Evaluator::pushFunctionArgument(const Symbol& symbol)
@@ -172,7 +182,7 @@ void app::Evaluator::handleDecl(const OpCode op)
     }
 
     if (op == OpCode::DECLVAR) {
-        m_variables.try_emplace(*symbolName, Symbol::ValueCategory::Lvalue);
+        m_blocks.back().try_emplace(*symbolName, Symbol::ValueCategory::Lvalue);
     }
     else if (op == OpCode::DECLFUN) {
         if (m_pointerStack.empty()) {
@@ -182,11 +192,7 @@ void app::Evaluator::handleDecl(const OpCode op)
         const auto pointer = m_pointerStack.top();
         m_pointerStack.pop();
 
-        m_variables.try_emplace(*symbolName, ScriptFunction{ pointer }, Symbol::ValueCategory::Lvalue);
-    }
-
-    if (!m_blocks.empty()) {
-        m_blocks.back().emplace(*symbolName);
+        m_blocks.back().try_emplace(*symbolName, ScriptFunction{ pointer }, Symbol::ValueCategory::Lvalue);
     }
 
     m_stack.pop_back();
@@ -461,12 +467,8 @@ void app::Evaluator::handleBlocks(const OpCode op)
         m_blocks.emplace_back();
     }
     else if (op == OpCode::DELBLOCK) {
-        if (m_blocks.empty()) {
+        if (m_blocks.size() <= 1) {
             throw std::runtime_error{ "Unable to delete scope block" };
-        }
-
-        for (const auto& var : m_blocks.back()) {
-            m_variables.erase(var);
         }
 
         m_blocks.pop_back();
@@ -475,7 +477,7 @@ void app::Evaluator::handleBlocks(const OpCode op)
     ++m_position;
 }
 
-void app::Evaluator::printState(bool showVariables)
+void app::Evaluator::printState(const bool showVariables)
 {
     if (m_stack.empty()) {
         printf("[stack is empty]\n");
@@ -484,19 +486,11 @@ void app::Evaluator::printState(bool showVariables)
     for (size_t i = 0; i < m_stack.size(); ++i) {
         printf("[%zu] ", i);
 
-        std::visit([this](auto&& arg) {
+        std::visit([](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
 
             if constexpr (std::is_same_v<T, std::string_view>) {
-                const auto it = m_variables.find(arg);
-                if (it == m_variables.end()) {
-                    printf("name: %s", std::string{ arg }.c_str());
-                }
-                else {
-                    printf("%s", it->second.getValueCategory() == Symbol::ValueCategory::Lvalue ?
-                        "lvalue " : "rvalue ");
-                    it->second.print();
-                }
+                printf("%s", std::string{ arg }.c_str());
             }
             else {
                 printf("%s", arg.getValueCategory() == Symbol::ValueCategory::Lvalue ? "lvalue " : "rvalue ");
@@ -509,10 +503,12 @@ void app::Evaluator::printState(bool showVariables)
 
     if (showVariables) {
         printf("variables:\n");
-        for (auto& [key, value] : m_variables) {
-            printf("\t%s: ", std::string{ key }.c_str());
-            value.print();
-            printf("\n");
+        for (const auto& block : m_blocks) {
+            for (const auto& [key, value] : block) {
+                printf("\t%s: ", std::string{ key }.c_str());
+                value.print();
+                printf("\n");
+            }
         }
     }
 }

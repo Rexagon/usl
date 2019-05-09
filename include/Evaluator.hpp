@@ -24,7 +24,7 @@ namespace app
         template<typename T>
         void registerVariable(std::string_view name, T&& value)
         {
-            m_variables.try_emplace(name, value, Symbol::ValueCategory::Lvalue);
+            m_blocks.back().try_emplace(name, value, Symbol::ValueCategory::Lvalue);
         }
 
         Symbol& findVariable(std::string_view name);
@@ -89,8 +89,7 @@ namespace app
 
         size_t m_position = 0;
 
-        std::vector<std::unordered_set<std::string_view>> m_blocks;
-        std::unordered_map<std::string_view, Symbol> m_variables;
+        std::vector<std::unordered_map<std::string_view, Symbol>> m_blocks;
 
         std::deque<StackItem> m_stack;
         std::deque<Symbol> m_argumentsStack;
