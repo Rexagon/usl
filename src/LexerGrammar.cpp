@@ -12,6 +12,7 @@ const app::RegexArray& app::buildRegexes()
         (KeywordIf,             std::regex{"^if"}),
         (KeywordElse,           std::regex{"^else"}),
         (KeywordWhile,          std::regex{"^while"}),
+        (KeywordDo,             std::regex{"^do"}),
         (KeywordFor,            std::regex{"^for"}),
         (KeywordBreak,          std::regex{"^break"}),
         (KeywordContinue,       std::regex{"^continue"}),

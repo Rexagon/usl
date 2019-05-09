@@ -15,6 +15,7 @@ namespace app
             KeywordIf,
             KeywordElse,
             KeywordWhile,
+            KeywordDo,
             KeywordFor,
             KeywordBreak,
             KeywordContinue,

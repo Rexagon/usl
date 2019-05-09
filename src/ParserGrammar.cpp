@@ -72,6 +72,7 @@ app::ParserGrammar::ParserGrammar()
 
     m_rules[Statement] = RulesBuilder{}
         .set().nonterm(ForLoop).hide()
+        .set().nonterm(DoWhileLoop).hide()
         .set().nonterm(WhileLoop).hide()
         .set().nonterm(Branch).hide()
         .set().nonterm(VariableDeclaration).term(Semicolon).hide()
@@ -82,6 +83,11 @@ app::ParserGrammar::ParserGrammar()
                 cb.push(OpCode::DECLVAR);
             })
         .set().nonterm(Expression).term(Semicolon).hide()
+        .set().term(KeywordReturn).term(Semicolon)
+            .translate([](CommandBuffer & cb, SyntaxNode & node) {
+                cb.push(OpCode::DELBLOCK);
+                cb.push(OpCode::RET);
+            })
         .set().term(KeywordReturn).nonterm(Expression).term(Semicolon)
             .translate([](CommandBuffer& cb, SyntaxNode& node) {
                 cb.translate(*node.children[1]);
@@ -247,6 +253,32 @@ app::ParserGrammar::ParserGrammar()
         .set().term(ParenthesisOpen).nonterm(Expression).term(ParenthesisClose)
             .translate([](CommandBuffer & cb, SyntaxNode & node) {
                 cb.translate(*node.children[1]);
+            })
+        .generate();
+
+    m_rules[DoWhileLoop] = RulesBuilder{}
+        .set().term(KeywordDo).nonterm(Block).term(KeywordWhile).nonterm(Condition)
+            .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                const auto bodyPosition = cb.createPositionIndex();
+                const auto endPosition = cb.createPositionIndex();
+
+                cb.translate([bodyPosition, endPosition](CommandBuffer& cb) {
+                    cb.pushLoopBounds(bodyPosition, endPosition);
+                });
+
+                cb.replyPosition(bodyPosition);
+                cb.translate(*node.children[1]);
+
+                cb.translate(*node.children[3]);
+                cb.requestPosition(bodyPosition);
+                cb.requestPosition(endPosition);
+                cb.push(OpCode::IF);
+
+                cb.replyPosition(endPosition);
+
+                cb.translate([](CommandBuffer& cb) {
+                    cb.popLoopBounds();
+                });
             })
         .generate();
 
@@ -591,6 +623,8 @@ const char* app::parser_grammar::getString(const size_t name)
         return "statement";
     case Condition:
         return "condition";
+    case DoWhileLoop:
+        return "do_while_loop";
     case WhileLoop:
         return "while_loop";
     case Branch:

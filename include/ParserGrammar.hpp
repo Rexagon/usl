@@ -28,6 +28,7 @@ namespace app
             BlockStatement,
             Condition,
             WhileLoop,
+            DoWhileLoop,
             Branch,
             ElseBranch,
             VariableDeclaration,
