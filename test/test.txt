@@ -1,10 +1,7 @@
-function inc(value) {
-    return value + 1;
+function inc(ref value) {
+    value = value + 1;
 }
 
 let test = 0;
-test = inc(inc(test));
-
-let ref temp = test;
-
-temp = temp + 1;
+inc(test);
+inc(test);

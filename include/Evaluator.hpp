@@ -19,6 +19,11 @@ namespace app
     public:
 		void eval(const ByteCode& bytecode);
 
+        Symbol& findVariable(std::string_view name);
+
+        void pushFunctionArgument(Symbol symbol);
+        Symbol popFunctionArgument();
+
 	private:
 		void handleDecl(const ByteCode& bytecode, size_t& position, opcode::Code op);
 		void handleAssign(const ByteCode& bytecode, size_t& position, opcode::Code op);
@@ -68,9 +73,7 @@ namespace app
             }, itemLeft);
         }
 
-		Symbol& findVariable(std::string_view name);
-
-        void printStack();
+        void printState();
 
 		std::vector<std::unordered_set<std::string_view>> m_blocks;
 		std::unordered_map<std::string_view, Symbol> m_variables;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdexcept>
+#include <unordered_map>
 #include "ByteCode.hpp"
 
 namespace app
@@ -122,6 +123,11 @@ namespace app
 	{
 	public:
 		virtual ~CoreObject() = default;
+
+		Symbol getMember(std::string_view name) const;
+
+    private:
+	    std::unordered_map<std::string_view, Symbol> m_members;
 	};
 
 	class CoreFunction

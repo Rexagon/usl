@@ -93,6 +93,9 @@ app::Symbol::Symbol(const Symbol& symbol, ValueCategory valueCategory) :
 app::Symbol::Symbol(app::Symbol* symbol) :
         m_data(symbol), m_type(Type::Reference), m_valueCategory(ValueCategory::Lvalue)
 {
+    if (symbol->getType() == Symbol::Type::Reference) {
+        m_data = std::get<Symbol*>(symbol->m_data);
+    }
 }
 
 app::Symbol app::Symbol::deref() const

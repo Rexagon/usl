@@ -13,14 +13,7 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 		const auto& item = bytecode[position];
 
 		printf("== step: %zu | position: %zu ==\n", step++, position);
-		printStack();
-
-		printf("variables:\n");
-		for (auto& [key, value] : m_variables) {
-		    printf("\t%s: ", std::string{key}.c_str());
-		    value.print();
-		    printf("\n");
-		}
+        printState();
 
 		std::visit([this, &position, &bytecode](auto && arg) {
 			using T = std::decay_t<decltype(arg)>;
@@ -110,14 +103,27 @@ void app::Evaluator::eval(const ByteCode& bytecode)
 
     printf("== end ==\n");
 
-    printf("variables:\n");
-    for (auto& [key, value] : m_variables) {
-        printf("\t%s: ", std::string{key}.c_str());
-        value.print();
-        printf("\n");
+    printState();
+}
+
+app::Symbol &app::Evaluator::findVariable(std::string_view name)
+{
+    const auto it = m_variables.find(name);
+    if (it == m_variables.end()) {
+        throw std::runtime_error("Unable to find variable: '" + std::string(name) + "'");
     }
 
-	printStack();
+    return it->second;
+}
+
+void app::Evaluator::pushFunctionArgument(app::Symbol symbol)
+{
+
+}
+
+app::Symbol app::Evaluator::popFunctionArgument()
+{
+	return Symbol{ Symbol::ValueCategory::Rvalue };
 }
 
 void app::Evaluator::handleDecl(const ByteCode& bytecode, size_t& position, opcode::Code op)
@@ -359,10 +365,27 @@ void app::Evaluator::handleArguments(const app::ByteCode& byteCode, size_t& posi
 
         auto& variable = m_stack.back();
 
-        visitSymbol([this](auto&& symbol) {
-            m_argumentsStack.push_back(symbol);
-            m_stack.pop_back();
-        }, variable);
+		std::visit([this](auto&& arg) {
+			using T = std::decay_t<decltype(arg)>;
+
+			if constexpr (std::is_same_v<T, std::string_view>) {
+				m_argumentsStack.emplace_back(Symbol{ &findVariable(arg) });
+			}
+			else {
+				arg.visit([this, &arg](auto&& data) {
+					using D = std::decay_t<decltype(data)>;
+
+					if constexpr (std::is_same_v<D, Symbol*>) {
+						m_argumentsStack.emplace_back(Symbol{ data });
+					}
+					else {
+						m_argumentsStack.emplace_back(Symbol{ arg, Symbol::ValueCategory::Rvalue });
+					}
+				});
+			}
+		}, variable);
+
+		m_stack.pop_back();
     }
     else if (op == opcode::POPARG) {
         if (m_argumentsStack.empty()) {
@@ -396,17 +419,7 @@ void app::Evaluator::handleBlocks(const ByteCode& bytecode, size_t& position, op
 	++position;
 }
 
-app::Symbol &app::Evaluator::findVariable(std::string_view name)
-{
-    const auto it = m_variables.find(name);
-    if (it == m_variables.end()) {
-        throw std::runtime_error("Unable to find variable: '" + std::string(name) + "'");
-    }
-
-    return it->second;
-}
-
-void app::Evaluator::printStack()
+void app::Evaluator::printState()
 {
     if (m_stack.empty()) {
         printf("[stack is empty]\n");
@@ -435,6 +448,13 @@ void app::Evaluator::printStack()
             }
         }, m_stack[i]);
 
+        printf("\n");
+    }
+
+    printf("variables:\n");
+    for (auto& [key, value] : m_variables) {
+        printf("\t%s: ", std::string{key}.c_str());
+        value.print();
         printf("\n");
     }
 }
