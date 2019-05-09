@@ -5,6 +5,8 @@
 #include "Lexer.hpp"
 #include "Parser.hpp"
 
+#include "StandardLibrary.hpp"
+
 struct Arguments final
 {
     Arguments(const int argc, char** argv)
@@ -119,6 +121,10 @@ int main(const int argc, char** argv)
 
         // Evaluate
         app::Evaluator evaluator{ arguments.showExecutionProcess };
+
+        auto standardLibrary = std::make_shared<app::StandardLibrary>();
+        evaluator.registerVariable("std", standardLibrary);
+
         evaluator.eval(byteCode);
     }
     catch (const std::runtime_error & e) {

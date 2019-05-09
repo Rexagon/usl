@@ -371,7 +371,13 @@ app::ParserGrammar::ParserGrammar()
         .set().nonterm(PrimaryExpression).hide()
         //.set().nonterm(PostfixExpression).term(OperatorIncrement)
         //.set().nonterm(PostfixExpression).term(OperatorDecrement)
-        //.set().nonterm(PostfixExpression).term(StructureReference).term(Identifier)
+        .set().nonterm(PostfixExpression).term(StructureReference).term(Identifier)
+            .translate([](CommandBuffer& cb, SyntaxNode& node) {
+                cb.translate(*node.children[0]);
+                const auto token = std::get<const Token*>(node.children[2]->value);
+                cb.push(convert(*token));
+                cb.push(OpCode::STRUCTREF);
+            })
         .set().nonterm(PostfixExpression).nonterm(CallArguments)
             .translate([](CommandBuffer & cb, SyntaxNode & node) {
                 cb.translate(*node.children[1]);

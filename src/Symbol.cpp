@@ -26,10 +26,10 @@ namespace details
         else if constexpr (std::is_same_v<T, app::ScriptFunction>) {
             return "[ScriptFunction]";
         }
-        else if constexpr (std::is_same_v<T, app::CoreObject*>) {
+        else if constexpr (std::is_same_v<T, app::CoreObjectPtr>) {
             return "[CoreObject]";
         }
-        else if constexpr (std::is_same_v<T, app::CoreFunction*>) {
+        else if constexpr (std::is_same_v<T, app::CoreFunctionPtr>) {
             return "[CoreFunction]";
         }
         else if constexpr (std::is_same_v<T, app::Symbol*>) {
@@ -75,12 +75,12 @@ app::Symbol::Symbol(const ScriptFunction& value, const ValueCategory category) :
 {
 }
 
-app::Symbol::Symbol(CoreObject* value, const ValueCategory category) :
+app::Symbol::Symbol(const CoreObjectPtr& value, const ValueCategory category) :
     m_type(Type::CoreObject), m_data(value), m_valueCategory(category)
 {
 }
 
-app::Symbol::Symbol(CoreFunction* value, const ValueCategory category) :
+app::Symbol::Symbol(const CoreFunctionPtr& value, const ValueCategory category) :
     m_type(Type::CoreFunction), m_data(value), m_valueCategory(category)
 {
 }
@@ -317,4 +317,9 @@ void app::Symbol::setValueCategory(const ValueCategory category)
 
 app::Symbol::ValueCategory app::Symbol::getValueCategory() const {
     return m_valueCategory;
+}
+
+app::Symbol::DataVariant& app::Symbol::getData()
+{
+    return m_data;
 }

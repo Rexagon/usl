@@ -29,3 +29,23 @@ let uninitialized;
 if (uninitialized == null) {
     counter_reference_test = "It also support strings. " + counter_reference_test;
 }
+
+let bool_type_test = false;
+bool_type_test = first == 20;
+
+function factorial(num) {
+    let rval = 1;
+    let t = 2;
+    while (t <= num) {
+        rval = rval * t;
+        t = t + 1;
+    }
+
+    return rval;
+}
+
+let i = 0;
+while (i < 100) {
+    std.println(factorial(i));
+    inc(i, 1);
+}

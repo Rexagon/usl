@@ -22,6 +22,8 @@ set(SOURCES
 	"${SOURCE_DIR}/Symbol.cpp"
 	"${SOURCE_DIR}/ByteCode.cpp"
 	"${SOURCE_DIR}/CommandBuffer.cpp"
+    "${SOURCE_DIR}/CoreObject.cpp"
+    "${SOURCE_DIR}/StandardLibrary.cpp"
 )
 
 add_executable(usl ${SOURCES})

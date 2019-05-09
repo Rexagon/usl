@@ -1,5 +1,8 @@
 #include "Evaluator.hpp"
 
+#include "CoreObject.hpp"
+#include "CoreFunction.hpp"
+
 app::Evaluator::Evaluator(const bool loggingEnabled) :
     m_loggingEnabled(loggingEnabled)
 {
@@ -13,7 +16,7 @@ void app::Evaluator::eval(const std::vector<ByteCodeItem>& byteCode)
 
         if (m_loggingEnabled) {
             printf("\n== step: %zu | position: %zu ==\n", step++, m_position);
-            printState();
+            printState(false);
         }
 
         std::visit([this](auto && arg) {
@@ -55,6 +58,10 @@ void app::Evaluator::eval(const std::vector<ByteCodeItem>& byteCode)
 
                 case OpCode::DEREF:
                     handleDeref();
+                    break;
+
+                case OpCode::STRUCTREF:
+                    handleStructRef();
                     break;
 
                 case OpCode::NOT:
@@ -103,8 +110,13 @@ void app::Evaluator::eval(const std::vector<ByteCodeItem>& byteCode)
 
     if (m_loggingEnabled) {
         printf("\n== end ==\n");
-        printState();
+        printState(true);
     }
+}
+
+void app::Evaluator::push(const Symbol& symbol)
+{
+    m_stack.push_back(symbol);
 }
 
 app::Symbol& app::Evaluator::findVariable(const std::string_view name)
@@ -115,6 +127,11 @@ app::Symbol& app::Evaluator::findVariable(const std::string_view name)
     }
 
     return it->second;
+}
+
+bool app::Evaluator::hasVariable(const std::string_view name) const
+{
+    return m_variables.find(name) == m_variables.end();
 }
 
 void app::Evaluator::pushFunctionArgument(const Symbol& symbol)
@@ -221,6 +238,37 @@ void app::Evaluator::handleDeref()
     visitSymbol([&value](const Symbol& symbol) {
         value = symbol.deref();
     }, value);
+
+    ++m_position;
+}
+
+void app::Evaluator::handleStructRef()
+{
+    if (m_stack.size() < 2) {
+        throw std::runtime_error{ "Unable to read STRUCTREF arguments. Stack size is less then 2" };
+    }
+
+    const auto memberName = m_stack.back();
+    m_stack.pop_back();
+
+    if (!std::holds_alternative<std::string_view>(memberName)) {
+        throw std::runtime_error{ "Unable to read STRUCTREF member name argument" };
+    }
+
+    auto& object = m_stack.back();
+
+    visitSymbol([&object, &memberName](const Symbol & symbol) {
+        symbol.visit([&object, &memberName](auto && arg) {
+            using T = std::decay_t<decltype(arg)>;
+
+            if constexpr (std::is_same_v<T, CoreObjectPtr>) {
+                object = arg->getMember(std::get<std::string_view>(memberName));
+            }
+            else {
+                throw std::runtime_error{ "Unable to access member of non core object" };
+            }
+        });
+    }, object);
 
     ++m_position;
 }
@@ -345,6 +393,12 @@ void app::Evaluator::handleControl(const OpCode op)
 
                     m_position = arg.address;
                 }
+                else if constexpr (std::is_same_v<T, CoreFunctionPtr>) {
+                    arg->call(*this);
+                    m_argumentsStack.clear();
+
+                    ++m_position;
+                }
                 else {
                     throw std::runtime_error("Wrong CALL argument type");
                 }
@@ -421,7 +475,7 @@ void app::Evaluator::handleBlocks(const OpCode op)
     ++m_position;
 }
 
-void app::Evaluator::printState()
+void app::Evaluator::printState(bool showVariables)
 {
     if (m_stack.empty()) {
         printf("[stack is empty]\n");

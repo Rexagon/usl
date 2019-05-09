@@ -13,6 +13,8 @@ std::string app::toString(const OpCode code)
         return "ASSIGNREF";
     case OpCode::DEREF:
         return "DEREF";
+    case OpCode::STRUCTREF:
+        return "STRUCTREF";
     case OpCode::POP:
         return "POP";
     case OpCode::NOT:

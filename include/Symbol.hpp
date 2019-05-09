@@ -57,8 +57,8 @@ namespace app
         Symbol(double value, ValueCategory category);
         Symbol(const std::string& value, ValueCategory category);
         Symbol(const ScriptFunction& value, ValueCategory category);
-        Symbol(CoreObject* value, ValueCategory category);
-        Symbol(CoreFunction* value, ValueCategory category);
+        Symbol(const CoreObjectPtr& value, ValueCategory category);
+        Symbol(const CoreFunctionPtr& value, ValueCategory category);
         Symbol(const Symbol& symbol, ValueCategory category);
 
         explicit Symbol(Symbol* symbol);
@@ -117,30 +117,12 @@ namespace app
         void setValueCategory(ValueCategory category);
         ValueCategory getValueCategory() const;
 
+        DataVariant& getData();
+
     protected:
         Type m_type;
         DataVariant m_data;
 
         ValueCategory m_valueCategory;
-    };
-
-    class CoreObject
-    {
-    public:
-        virtual ~CoreObject() = default;
-
-        Symbol getMember(std::string_view name) const;
-
-    private:
-        std::unordered_map<std::string_view, Symbol> m_members;
-    };
-
-    class CoreFunction
-    {
-    public:
-        virtual ~CoreFunction() = default;
-
-    protected:
-
     };
 }

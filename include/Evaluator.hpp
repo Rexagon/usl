@@ -19,7 +19,16 @@ namespace app
 
         void eval(const std::vector<ByteCodeItem>& byteCode);
 
+        void push(const Symbol& symbol);
+
+        template<typename T>
+        void registerVariable(std::string_view name, T&& value)
+        {
+            m_variables.try_emplace(name, value, Symbol::ValueCategory::Lvalue);
+        }
+
         Symbol& findVariable(std::string_view name);
+        bool hasVariable(std::string_view name) const;
 
         void pushFunctionArgument(const Symbol& symbol);
         Symbol popFunctionArgument();
@@ -28,6 +37,7 @@ namespace app
         void handleDecl(OpCode op);
         void handleAssign(OpCode op);
         void handleDeref();
+        void handleStructRef();
         void handlePop();
         void handleUnaryOperator(OpCode op);
         void handleBinaryOperator(OpCode op);
@@ -73,7 +83,7 @@ namespace app
             }, itemLeft);
         }
 
-        void printState();
+        void printState(bool showVariables);
 
         bool m_loggingEnabled;
 
