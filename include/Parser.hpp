@@ -10,7 +10,7 @@ namespace app
         using StateSets = std::vector<StateSet>;
 
     public:
-        Parser();
+        explicit Parser(bool loggingEnabled);
 
         std::vector<ByteCodeItem> parse(const std::vector<Token>& tokens);
 
@@ -20,6 +20,8 @@ namespace app
         void complete(size_t i, size_t j);
 
         static void tryEmplace(StateSet& stateSet, const EarleyItem& item);
+
+        bool m_loggingEnabled;
 
         StateSets m_stateSets;
         const ParserGrammar& m_grammar;

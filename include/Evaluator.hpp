@@ -15,6 +15,8 @@ namespace app
         using StackItem = std::variant<Symbol, std::string_view>;
 
     public:
+        explicit Evaluator(bool loggingEnabled);
+
         void eval(const std::vector<ByteCodeItem>& byteCode);
 
         Symbol& findVariable(std::string_view name);
@@ -72,6 +74,8 @@ namespace app
         }
 
         void printState();
+
+        bool m_loggingEnabled;
 
         size_t m_position = 0;
 

@@ -1,9 +1,31 @@
-function inc(ref value) {
-    value = value + 1;
+/*
+    Strange and useless inefficient javascript parody.
+*/
+
+// with both type of comments
+
+function inc(ref value, amount) {
+    value = value + amount;
 }
 
-let test = 0;
+let first = 0.5;
 
-let ref second = test;
-inc(second);
-inc(test);
+first = 100 - (first + 4.5) * 10;
+
+let counter = 0;
+while (first > 10) {
+    inc(counter, 1);
+    inc(first, -10);
+
+    if (first < 30) {
+        break;
+    }
+}
+
+let ref counter_reference_test = counter;
+
+let uninitialized;
+
+if (uninitialized == null) {
+    counter_reference_test = "It also support strings. " + counter_reference_test;
+}

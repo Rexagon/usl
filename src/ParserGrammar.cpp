@@ -84,12 +84,14 @@ app::ParserGrammar::ParserGrammar()
             })
         .set().term(KeywordBreak).term(Semicolon)
             .translate([](CommandBuffer& cb, SyntaxNode& node) {
-                cb.push(cb.getLoopEndPointerIndex());
+                cb.push(OpCode::DELBLOCK);
+                cb.requestPosition(cb.getLoopEndPointerIndex());
                 cb.push(OpCode::JMP);
             })
         .set().term(KeywordContinue).term(Semicolon)
             .translate([](CommandBuffer& cb, SyntaxNode& node) {
-                cb.push(cb.getLoopStartPointerIndex());
+                cb.push(OpCode::DELBLOCK);
+                cb.requestPosition(cb.getLoopStartPointerIndex());
                 cb.push(OpCode::JMP);
             })
         .generate();

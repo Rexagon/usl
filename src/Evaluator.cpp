@@ -1,13 +1,20 @@
 #include "Evaluator.hpp"
 
+app::Evaluator::Evaluator(const bool loggingEnabled) :
+    m_loggingEnabled(loggingEnabled)
+{
+}
+
 void app::Evaluator::eval(const std::vector<ByteCodeItem>& byteCode)
 {
     size_t step = 0;
     while (m_position != byteCode.size()) {
         const auto& item = byteCode[m_position];
 
-        printf("== step: %zu | position: %zu ==\n", step++, m_position);
-        printState();
+        if (m_loggingEnabled) {
+            printf("\n== step: %zu | position: %zu ==\n", step++, m_position);
+            printState();
+        }
 
         std::visit([this](auto && arg) {
             using T = std::decay_t<decltype(arg)>;
@@ -27,7 +34,9 @@ void app::Evaluator::eval(const std::vector<ByteCodeItem>& byteCode)
                 return;
             }
             else {
-                printf("[OP] %s\n", toString(arg).c_str());
+                if (m_loggingEnabled) {
+                    printf("[OP] %s\n", toString(arg).c_str());
+                }
 
                 switch (arg) {
                 case OpCode::DECLVAR:
@@ -90,13 +99,12 @@ void app::Evaluator::eval(const std::vector<ByteCodeItem>& byteCode)
                 }
             }
         }, item);
-
-        printf("\n");
     }
 
-    printf("== end ==\n");
-
-    printState();
+    if (m_loggingEnabled) {
+        printf("\n== end ==\n");
+        printState();
+    }
 }
 
 app::Symbol& app::Evaluator::findVariable(const std::string_view name)

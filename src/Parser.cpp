@@ -6,8 +6,8 @@
 
 #include "ByteCode.hpp"
 
-app::Parser::Parser() :
-    m_grammar(ParserGrammar::create())
+app::Parser::Parser(const bool loggingEnabled) :
+    m_loggingEnabled(loggingEnabled), m_grammar(ParserGrammar::create())
 {
 }
 
@@ -135,10 +135,11 @@ std::vector<app::ByteCodeItem> app::Parser::parse(const std::vector<Token>& toke
 
     const auto timeAfter = std::chrono::high_resolution_clock::now();
 
-    using MilliDuration = std::chrono::duration<double, std::milli>;
-    printf("AST generated in %f ms\n", std::chrono::duration_cast<MilliDuration>(timeAfter - timeBegin).count());
-
-    SyntaxNode::printTree(root);
+    if (m_loggingEnabled) {
+        using MilliDuration = std::chrono::duration<double, std::milli>;
+        printf("AST generated in %f ms\n", std::chrono::duration_cast<MilliDuration>(timeAfter - timeBegin).count());
+        SyntaxNode::printTree(root);
+    }
 
     // Translate to bytecode
     CommandBuffer commandBuffer;

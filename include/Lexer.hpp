@@ -7,7 +7,7 @@ namespace app
     class Lexer final
     {
     public:
-        Lexer();
+        explicit Lexer();
 
         std::vector<Token> run(std::string_view text) const;
 
