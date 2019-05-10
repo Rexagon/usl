@@ -1,0 +1,133 @@
+// see `src/StandardLibrary.cpp` for more details about LinkedListNode
+
+function linked_list_print(node) {
+    while (node != null) {
+        std.print(node.value);
+        node = node.get_next();
+
+        if (node != null) {
+            std.print(", ");
+        }
+    }
+
+    std.println("");
+}
+
+function linked_list_size(node) {
+    let result = 0;
+
+    while (node != null) {
+        result = result + 1;
+        node = node.get_next();
+    }
+
+    return result;
+}
+
+function linked_list_get_node(node, index) {
+    let i = 0;
+    while (i < index && node != null) {
+        node = node.get_next();
+        i = i + 1;
+    }
+
+    return node;
+}
+
+function linked_list_get(node, index) {
+    node = linked_list_get_node(node, index);
+
+    if (node == null) {
+        return null;
+    }
+    else {
+        return node.value;
+    }
+}
+
+function linked_list_set(node, index, value) {
+    node = linked_list_get_node(node, index);
+
+    if (node != null) {
+        node.value = value;
+    }
+}
+
+function linked_list_insert_after(node, value) {
+    if (node == null) {
+        return;
+    }
+
+    let new_node = std.LinkedListNode.new();
+    new_node.value = value;
+
+    let next_value = node.get_next();
+    if (next_value != null) {
+        new_node.set_next(next_value);
+        next_value.set_prev(new_node);
+    }
+
+    node.set_next(new_node);
+    new_node.set_prev(node);
+}
+
+function linked_list_erase(node) {
+    if (node == null) {
+        return;
+    }
+
+    let next_node = node.get_next();
+    let prev_node = node.get_prev();
+
+    if (next_node != null) {
+        next_node.set_prev(prev_node);
+    }
+    if (prev_node != null) {
+        prev_node.set_next(next_node);
+    }
+}
+
+function linked_list_find(node, value, ref result_node) {
+    while (node != null) {
+        if (node.value == value) {
+            result_node = node;
+            return;
+        }
+
+        node = node.get_next();
+    }
+
+    result_node = null;
+}
+
+let test_list = std.LinkedListNode.new();
+test_list.value = "Hello";
+
+linked_list_insert_after(test_list, "One");
+linked_list_insert_after(test_list.get_next(), "Two");
+linked_list_insert_after(test_list.get_next().get_next(), "Three");
+linked_list_insert_after(test_list.get_next().get_next().get_next(), "Four");
+
+linked_list_erase(test_list.get_next());
+
+linked_list_print(test_list);
+
+std.println("Enter searched string. Or 'exit'");
+while(true) {
+    std.print("> ");
+    let input = std.readln();
+
+    if (input == "exit") {
+        break;
+    }
+
+    let result;
+    linked_list_find(test_list, input, result);
+
+    if (result != null) {
+        std.println("Yes. List contains '" + result.value + "'");
+    }
+    else {
+        std.println("Not found");
+    }
+}

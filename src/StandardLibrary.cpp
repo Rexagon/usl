@@ -51,6 +51,20 @@ namespace app::standard_objects
         Symbol m_next{ Symbol::ValueCategory::Lvalue };
         Symbol m_prev{ Symbol::ValueCategory::Lvalue };
     };
+
+    class Pair final : public CoreObject
+    {
+    public:
+        Pair()
+        {
+            registerMember("new", std::make_shared<SimpleCoreFunction>([](Evaluator & evaluator) {
+                evaluator.push(Symbol{ std::make_shared<Pair>(), Symbol::ValueCategory::Rvalue });
+            }));
+
+            registerMember("first", std::nullopt);
+            registerMember("second", std::nullopt);
+        }
+    };
 }
 
 app::StandardLibrary::StandardLibrary()
@@ -72,4 +86,5 @@ app::StandardLibrary::StandardLibrary()
     }));
 
     registerMember("LinkedListNode", std::make_shared<standard_objects::LinkedListNode>());
+    registerMember("Pair", std::make_shared<standard_objects::Pair>());
 }
