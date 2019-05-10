@@ -86,25 +86,33 @@ app::ParserGrammar::ParserGrammar()
         .set().nonterm(Expression).term(Semicolon).hide()
         .set().term(KeywordReturn).term(Semicolon)
             .translate([](CommandBuffer & cb, SyntaxNode & node) {
-                cb.push(OpCode::DELBLOCK);
+                cb.translate([](CommandBuffer & cb) {
+                    cb.clearBlocks();
+                });
                 cb.push(OpCode::RET);
             })
         .set().term(KeywordReturn).nonterm(Expression).term(Semicolon)
             .translate([](CommandBuffer& cb, SyntaxNode& node) {
                 cb.translate(*node.children[1]);
                 cb.push(OpCode::DEREF);
-                cb.push(OpCode::DELBLOCK);
+                cb.translate([](CommandBuffer & cb) {
+                    cb.clearBlocks();
+                });
                 cb.push(OpCode::RET);
             })
         .set().term(KeywordBreak).term(Semicolon)
             .translate([](CommandBuffer& cb, SyntaxNode& node) {
-                cb.push(OpCode::DELBLOCK);
+                cb.translate([](CommandBuffer & cb) {
+                    cb.clearBlocks();
+                });
                 cb.requestPosition(cb.getLoopEndPointerIndex());
                 cb.push(OpCode::JMP);
             })
         .set().term(KeywordContinue).term(Semicolon)
             .translate([](CommandBuffer& cb, SyntaxNode& node) {
-                cb.push(OpCode::DELBLOCK);
+                cb.translate([](CommandBuffer& cb) {
+                    cb.clearBlocks();
+                });
                 cb.requestPosition(cb.getLoopStartPointerIndex());
                 cb.push(OpCode::JMP);
             })
@@ -123,6 +131,10 @@ app::ParserGrammar::ParserGrammar()
                 cb.requestPosition(endPosition);
                 cb.push(OpCode::JMP);
 
+                cb.translate([startPosition, endPosition](CommandBuffer & cb) {
+                    cb.pushLoopBounds(startPosition, endPosition);
+                });
+
                 cb.replyPosition(startPosition);
                 cb.push(OpCode::DEFBLOCK);
                 cb.translate(*node.children[2]);
@@ -132,6 +144,10 @@ app::ParserGrammar::ParserGrammar()
                 cb.push(OpCode::DELBLOCK);
                 cb.push(OpCode::RET);
                 cb.replyPosition(endPosition);
+
+                cb.translate([](CommandBuffer & cb) {
+                    cb.popLoopBounds();
+                });
             })
         .generate();
 
@@ -179,11 +195,11 @@ app::ParserGrammar::ParserGrammar()
                 const auto blockStartPosition = cb.createPositionIndex();
                 const auto blockEndPosition = cb.createPositionIndex();
 
-                cb.push(OpCode::DEFBLOCK);
-
                 cb.translate([conditionStartPosition, blockEndPosition](CommandBuffer & cb) {
                     cb.pushLoopBounds(conditionStartPosition, blockEndPosition);
                 });
+
+                cb.push(OpCode::DEFBLOCK);
 
                 const auto& condition = *node.children[1];
                 cb.translate(*condition.children[1]);
@@ -204,11 +220,11 @@ app::ParserGrammar::ParserGrammar()
 
                 cb.replyPosition(blockEndPosition);
 
+                cb.push(OpCode::DELBLOCK);
+
                 cb.translate([](CommandBuffer & cb) {
                     cb.popLoopBounds();
                 });
-
-                cb.push(OpCode::DELBLOCK);
             })
         .generate();
 
@@ -234,9 +250,14 @@ app::ParserGrammar::ParserGrammar()
 
     const auto createBlockTranslator = [](bool single) {
         return [single](CommandBuffer& cb, SyntaxNode& node) {
+            const auto startPosition = cb.createPositionIndex();
+            const auto endPosition = cb.createPositionIndex();
+
+            cb.replyPosition(startPosition);
             cb.push(OpCode::DEFBLOCK);
             cb.translate(*node.children[single ? 0 : 1]);
             cb.push(OpCode::DELBLOCK);
+            cb.replyPosition(endPosition);
         };
     };
 
@@ -611,6 +632,8 @@ const char* app::parser_grammar::getString(const size_t name)
         return "comma_function_argument";
     case FunctionArgumentIdentifier:
         return "function_argument_identifier";
+    case FunctionBlock:
+        return "function_block";
     case ForLoop:
         return "for_loop";
     case ForCondition:

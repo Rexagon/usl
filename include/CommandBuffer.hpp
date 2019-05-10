@@ -35,13 +35,21 @@ namespace app
         size_t getLoopEndPointerIndex() const;
         void popLoopBounds();
 
+        void clearBlocks();
+
         size_t createPositionIndex();
 
     private:
         std::list<Command> m_commands;
         size_t m_currentPointerIndex = 0;
+
         std::stack<std::pair<size_t, size_t>> m_loopBounds;
 
-        std::list<Command>::iterator m_currentPosition = m_commands.end();
+        std::stack<std::pair<size_t, size_t>> m_scopeBounds;
+        std::stack<size_t> m_scopeBlocks;
+        size_t m_currentBlock = 0;
+
+        bool m_applyLocalIterator = false;
+        std::list<Command>::iterator m_localIterator = m_commands.end();
     };
 }

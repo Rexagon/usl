@@ -1,3 +1,7 @@
 for (let k = 0; k < 10; k = k + 1) {
     k = k * 2;
+
+    if (k == 4) {
+        break;
+    }
 }

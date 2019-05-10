@@ -12,12 +12,12 @@ app::Evaluator::Evaluator(const bool loggingEnabled) :
 void app::Evaluator::eval(const std::vector<ByteCodeItem>& byteCode)
 {
     size_t step = 0;
-    while (m_position != byteCode.size()) {
+    while (m_position < byteCode.size()) {
         const auto& item = byteCode[m_position];
 
         if (m_loggingEnabled) {
             printf("\n== step: %zu | position: %zu ==\n", step++, m_position);
-            printState(false);
+            printState(true);
         }
 
         std::visit([this](auto && arg) {
@@ -117,7 +117,7 @@ void app::Evaluator::eval(const std::vector<ByteCodeItem>& byteCode)
 
 void app::Evaluator::push(const Symbol& symbol)
 {
-    m_stack.push_back(symbol);
+    m_stack.emplace_back(symbol);
 }
 
 app::Symbol& app::Evaluator::findVariable(const std::string_view name)
@@ -144,27 +144,13 @@ bool app::Evaluator::hasVariable(const std::string_view name) const
     return false;
 }
 
-void app::Evaluator::pushFunctionArgument(const Symbol& symbol)
-{
-    symbol.visit([this, &symbol](auto && data) {
-        using D = std::decay_t<decltype(data)>;
-
-        if constexpr (std::is_same_v<D, Symbol*>) {
-            m_argumentsStack.emplace_back(data);
-        }
-        else {
-            m_argumentsStack.emplace_back(symbol, Symbol::ValueCategory::Rvalue);
-        }
-    });
-}
-
 app::Symbol app::Evaluator::popFunctionArgument()
 {
     if (m_argumentsStack.empty()) {
         throw std::runtime_error{ "Unable to read function arguments. Arguments stack is empty" };
     }
 
-    auto argument = std::move(m_argumentsStack.front());
+    auto argument = m_argumentsStack.front();
     m_argumentsStack.pop_front();
 
     return argument;
@@ -182,7 +168,10 @@ void app::Evaluator::handleDecl(const OpCode op)
     }
 
     if (op == OpCode::DECLVAR) {
-        m_blocks.back().try_emplace(*symbolName, Symbol::ValueCategory::Lvalue);
+        const auto[it, success] = m_blocks.back().try_emplace(*symbolName, Symbol::ValueCategory::Lvalue);
+        if (!success) {
+            throw std::runtime_error{ "Variable with name " + std::string{ *symbolName } + "already exists" };
+        }
     }
     else if (op == OpCode::DECLFUN) {
         if (m_pointerStack.empty()) {
@@ -192,7 +181,12 @@ void app::Evaluator::handleDecl(const OpCode op)
         const auto pointer = m_pointerStack.top();
         m_pointerStack.pop();
 
-        m_blocks.back().try_emplace(*symbolName, ScriptFunction{ pointer }, Symbol::ValueCategory::Lvalue);
+        const auto[it, success] = m_blocks.back().try_emplace(*symbolName,
+            ScriptFunction{ pointer }, Symbol::ValueCategory::Lvalue);
+
+        if (!success) {
+            throw std::runtime_error{ "Function with name " + std::string{ *symbolName } +"already exists" };
+        }
     }
 
     m_stack.pop_back();
@@ -209,13 +203,10 @@ void app::Evaluator::handleAssign(const OpCode op)
     auto variableValue = m_stack.back();
     m_stack.pop_back();
 
-    auto& variable = m_stack.back();
+    auto variable = m_stack.back();
+    m_stack.pop_back();
 
-    visitSymbolsPair([op](auto&& argLeft, auto&& argRight) {
-        if (argLeft.getValueCategory() != Symbol::ValueCategory::Lvalue) {
-            throw std::runtime_error{ "Unable to assign value to rvalue" };
-        }
-
+    visitSymbolsPair([op](Symbol& argLeft, Symbol& argRight) {
         if (op == OpCode::ASSIGN) {
             argLeft.assign(argRight);
         }
@@ -228,8 +219,6 @@ void app::Evaluator::handleAssign(const OpCode op)
         }
     }, variable, variableValue);
 
-    m_stack.pop_back();
-
     ++m_position;
 }
 
@@ -239,10 +228,11 @@ void app::Evaluator::handleDeref()
         throw std::runtime_error{ "Unable to read DEREF arguments. Stack is empty" };
     }
 
-    auto& value = m_stack.back();
+    auto value = m_stack.back();
+    m_stack.pop_back();
 
-    visitSymbol([&value](const Symbol& symbol) {
-        value = symbol.deref();
+    visitSymbol([this](const Symbol& symbol) {
+        m_stack.emplace_back(Symbol{ symbol.unref(), Symbol::ValueCategory::Rvalue });
     }, value);
 
     ++m_position;
@@ -254,21 +244,28 @@ void app::Evaluator::handleStructRef()
         throw std::runtime_error{ "Unable to read STRUCTREF arguments. Stack size is less then 2" };
     }
 
-    const auto memberName = m_stack.back();
+    const auto memberName = std::move(m_stack.back());
     m_stack.pop_back();
 
     if (!std::holds_alternative<std::string_view>(memberName)) {
         throw std::runtime_error{ "Unable to read STRUCTREF member name argument" };
     }
 
-    auto& object = m_stack.back();
+    auto object = m_stack.back();
+    m_stack.pop_back();
 
-    visitSymbol([&object, &memberName](const Symbol & symbol) {
-        symbol.visit([&object, &memberName](auto && arg) {
+    visitSymbol([this, &memberName](const Symbol & symbol) {
+        symbol.unref().visit([this, &memberName](auto && arg) {
             using T = std::decay_t<decltype(arg)>;
 
             if constexpr (std::is_same_v<T, CoreObjectPtr>) {
-                object = arg->getMember(std::get<std::string_view>(memberName));
+                if (arg == nullptr) {
+                    throw std::runtime_error{ "CoreObject is null" };
+                }
+
+                //TODO: check original core object lifetime after assignment
+                auto member = arg->getMember(std::get<std::string_view>(memberName));
+                m_stack.emplace_back(member);
             }
             else {
                 throw std::runtime_error{ "Unable to access member of non core object" };
@@ -294,10 +291,11 @@ void app::Evaluator::handleUnaryOperator(const OpCode op)
         throw std::runtime_error{ "Unable to read " + toString(op) + " argument. Stack is empty" };
     }
 
-    auto& value = m_stack.back();
+    auto value = m_stack.back();
+    m_stack.pop_back();
 
-    visitSymbol([&value, op](const Symbol& arg) {
-        value = arg.operationUnary(op);
+    visitSymbol([this, op](const Symbol& arg) {
+        m_stack.emplace_back(arg.unref().operationUnary(op));
     }, value);
 
     ++m_position;
@@ -312,17 +310,18 @@ void app::Evaluator::handleBinaryOperator(const OpCode op)
     auto valueRight = m_stack.back();
     m_stack.pop_back();
 
-    auto& valueLeft = m_stack.back();
+    auto valueLeft = m_stack.back();
+    m_stack.pop_back();
 
-    visitSymbolsPair([&valueLeft, op](const Symbol& symbolLeft, const Symbol& symbolRight) {
+    visitSymbolsPair([this, op](const Symbol& symbolLeft, const Symbol& symbolRight) {
         if (isBinaryMathOp(op)) {
-            valueLeft = symbolLeft.operationBinaryMath(symbolRight, op);
+            m_stack.emplace_back(symbolLeft.unref().operationBinaryMath(symbolRight.unref(), op));
         }
         else if (isLogicOp(op)) {
-            valueLeft = symbolLeft.operationLogic(symbolRight, op);
+            m_stack.emplace_back(symbolLeft.unref().operationLogic(symbolRight.unref(), op));
         }
         else if (isComparisonOp(op)) {
-            valueLeft = symbolLeft.operationCompare(symbolRight, op);
+            m_stack.emplace_back(symbolLeft.unref().operationCompare(symbolRight.unref(), op));
         }
     }, valueLeft, valueRight);
 
@@ -341,7 +340,7 @@ void app::Evaluator::handleControl(const OpCode op)
 
         auto value = false;
         visitSymbol([&value](auto && symbol) {
-            symbol.visit([&value](auto && arg) {
+            symbol.unref().visit([&value](auto && arg) {
                 using T = std::decay_t<decltype(arg)>;
 
                 if constexpr (std::is_same_v<T, std::nullopt_t>) {
@@ -391,7 +390,7 @@ void app::Evaluator::handleControl(const OpCode op)
         m_stack.pop_back();
 
         visitSymbol([this](const Symbol & symbol) {
-            symbol.visit([this](auto && arg) {
+            symbol.unref().visit([this](auto && arg) {
                 using T = std::decay_t<decltype(arg)>;
 
                 if constexpr (std::is_same_v<T, ScriptFunction>) {
@@ -435,7 +434,8 @@ void app::Evaluator::handleArguments(const OpCode op)
             throw std::runtime_error{ "Unable to read PUSHARG arguments. Stack is empty" };
         }
 
-        const auto& variable = m_stack.back();
+        auto variable = m_stack.back();
+        m_stack.pop_back();
 
         std::visit([this](auto && arg) {
             using T = std::decay_t<decltype(arg)>;
@@ -444,11 +444,9 @@ void app::Evaluator::handleArguments(const OpCode op)
                 m_argumentsStack.emplace_back(&findVariable(arg));
             }
             else {
-                pushFunctionArgument(arg);
+                m_argumentsStack.emplace_back(arg);
             }
         }, variable);
-
-        m_stack.pop_back();
     }
     else if (op == OpCode::POPARG) {
         if (m_argumentsStack.empty()) {
@@ -507,6 +505,19 @@ void app::Evaluator::printState(const bool showVariables)
             for (const auto& [key, value] : block) {
                 printf("\t%s: ", std::string{ key }.c_str());
                 value.print();
+                printf("\n");
+            }
+            printf("\n");
+        }
+
+        if (m_argumentsStack.empty()) {
+            printf("[arguments stack is empty]\n");
+        }
+        else {
+            printf("[arguments stack:]\n");
+            for (size_t i = 0; i < m_argumentsStack.size(); ++i) {
+                printf("[%zu] ", i);
+                m_argumentsStack[i].print();
                 printf("\n");
             }
         }

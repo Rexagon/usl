@@ -30,7 +30,6 @@ namespace app
         Symbol& findVariable(std::string_view name);
         bool hasVariable(std::string_view name) const;
 
-        void pushFunctionArgument(const Symbol& symbol);
         Symbol popFunctionArgument();
 
     private:
@@ -51,24 +50,11 @@ namespace app
             std::visit([this, &visitor](auto&& arg) {
                 using T = std::decay_t<decltype(arg)>;
 
-                const auto unref = [&visitor](auto&& symbol) {
-                    symbol.visit([&visitor, &symbol](auto&& data) {
-                        using D = std::decay_t<decltype(data)>;
-
-                        if constexpr (std::is_same_v<D, Symbol*>) {
-                            visitor(*data);
-                        }
-                        else {
-                            visitor(symbol);
-                        }
-                    });
-                };
-
                 if constexpr (std::is_same_v<T, std::string_view>) {
-                    unref(findVariable(arg));
+                    visitor(findVariable(arg));
                 }
                 else {
-                    unref(arg);
+                    visitor(arg);
                 }
             }, item);
         }
@@ -76,8 +62,8 @@ namespace app
         template<typename F>
         void visitSymbolsPair(F&& visitor, StackItem& itemLeft, StackItem& itemRight)
         {
-            visitSymbol([this, &visitor, &itemRight](auto&& symbolLeft) {
-                visitSymbol([&visitor, &symbolLeft](auto&& symbolRight) {
+            visitSymbol([this, &visitor, &itemRight](Symbol& symbolLeft) {
+                visitSymbol([&visitor, &symbolLeft](Symbol& symbolRight) {
                     visitor(symbolLeft, symbolRight);
                 }, itemRight);
             }, itemLeft);
@@ -89,7 +75,7 @@ namespace app
 
         size_t m_position = 0;
 
-        std::vector<std::unordered_map<std::string_view, Symbol>> m_blocks;
+        std::deque<std::unordered_map<std::string_view, Symbol>> m_blocks;
 
         std::deque<StackItem> m_stack;
         std::deque<Symbol> m_argumentsStack;

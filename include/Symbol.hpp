@@ -63,40 +63,63 @@ namespace app
 
         explicit Symbol(Symbol* symbol);
 
-        Symbol deref() const;
+        Symbol& unref();
+        const Symbol& unref() const;
 
         template<typename T>
-        void assign(const T& value)
+        void assign(T&& value)
         {
-            std::visit([this, &value](auto && arg) {
-                using D = std::decay_t<decltype(arg)>;
+            if (m_valueCategory != ValueCategory::Lvalue) {
+                throw std::runtime_error{ "Unable to assign value to rvalue 123" };
+            }
 
-                if constexpr (std::is_same_v<D, Symbol*>) {
-                    arg->assign(value);
+            auto& symbol = unref();
+
+            using D = std::decay_t<T>;
+
+            if constexpr (std::is_same_v<D, Symbol*>) {
+                symbol.assign(value->unref());
+            }
+            else if constexpr (details::is_any_of_v<D,
+                std::nullopt_t,
+                bool,
+                double,
+                std::string,
+                ScriptFunction,
+                CoreObjectPtr,
+                CoreFunctionPtr>)
+            {
+                symbol.m_data = value;
+                if constexpr (std::is_same_v<D, std::nullopt_t>) {
+                    symbol.m_type = Type::Null;
                 }
-                else if constexpr (details::is_any_of_v<T, std::nullopt_t, bool, double, std::string>) {
-                    m_data = value;
-                    if constexpr (std::is_same_v<T, std::nullopt_t>) {
-                        m_type = Type::Null;
-                    }
-                    else if constexpr (std::is_same_v<T, bool>) {
-                        m_type = Type::Bool;
-                    }
-                    else if constexpr (std::is_same_v<T, double>) {
-                        m_type = Type::Number;
-                    }
-                    else if constexpr (std::is_same_v<T, std::string>) {
-                        m_type = Type::String;
-                    }
+                else if constexpr (std::is_same_v<D, bool>) {
+                    symbol.m_type = Type::Bool;
                 }
-                else if constexpr (std::is_same_v<T, Symbol>) {
-                    m_data = value.m_data;
-                    m_type = value.m_type;
+                else if constexpr (std::is_same_v<D, double>) {
+                    symbol.m_type = Type::Number;
                 }
-                else {
-                    throw std::runtime_error("Bad assign");
+                else if constexpr (std::is_same_v<D, std::string>) {
+                    symbol.m_type = Type::String;
                 }
-            }, m_data);
+                else if constexpr (std::is_same_v<D, ScriptFunction>) {
+                    symbol.m_type = Type::ScriptFunction;
+                }
+                else if constexpr (std::is_same_v<D, CoreObjectPtr>) {
+                    symbol.m_type = Type::CoreObject;
+                }
+                else if constexpr (std::is_same_v<D, CoreFunctionPtr>) {
+                    symbol.m_type = Type::CoreFunction;
+                }
+            }
+            else if constexpr (std::is_same_v<D, Symbol>) {
+                auto& unreferencedValue = value.unref();
+                symbol.m_data = unreferencedValue.m_data;
+                symbol.m_type = unreferencedValue.m_type;
+            }
+            else {
+                throw std::runtime_error{ "Bad assign argument" };
+            }
         }
 
         Symbol operationUnary(OpCode op) const;

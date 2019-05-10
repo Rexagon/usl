@@ -86,32 +86,40 @@ app::Symbol::Symbol(const CoreFunctionPtr& value, const ValueCategory category) 
 }
 
 app::Symbol::Symbol(const Symbol& symbol, const ValueCategory category) :
-    m_type(symbol.m_type), m_data(symbol.m_data), m_valueCategory(category)
+    m_type(Type::Null), m_data(std::nullopt), m_valueCategory(category)
 {
+    const auto& unreferencedSymbol = symbol.unref();
+    m_type = unreferencedSymbol.m_type;
+    m_data = unreferencedSymbol.m_data;
 }
 
 app::Symbol::Symbol(Symbol* symbol) :
-    m_type(Type::Reference), m_data(symbol), m_valueCategory(ValueCategory::Lvalue)
+    m_type(Type::Reference), m_data(&symbol->unref()), m_valueCategory(ValueCategory::Lvalue)
 {
-    if (symbol->getType() == Type::Reference) {
-        m_data = std::get<Symbol*>(symbol->m_data);
-    }
 }
 
-app::Symbol app::Symbol::deref() const
+app::Symbol& app::Symbol::unref()
 {
-    if (m_valueCategory == ValueCategory::Rvalue) {
-        return *this;
+    auto* symbol = this;
+    while (symbol->getType() == Type::Reference) {
+        symbol = std::get<Symbol*>(m_data);
     }
 
-    if (m_type == Type::Reference) {
-        auto* symbol = std::get<Symbol*>(m_data);
-        return symbol->deref();
+    return *symbol;
+}
+
+const app::Symbol& app::Symbol::unref() const
+{
+    const auto* symbol = this;
+    while (symbol->getType() == Type::Reference) {
+        symbol = std::get<Symbol*>(m_data);
+
+        if (symbol == this) {
+            throw std::runtime_error{ "Found self linked reference" };
+        }
     }
 
-    auto result = *this;
-    result.setValueCategory(ValueCategory::Rvalue);
-    return result;
+    return *symbol;
 }
 
 app::Symbol app::Symbol::operationUnary(const OpCode op) const
@@ -124,17 +132,17 @@ app::Symbol app::Symbol::operationUnary(const OpCode op) const
 
         if constexpr (std::is_same_v<T, std::nullopt_t>) {
             if (op == OpCode::NEQ) {
-                result.assign(true);
+                result = Symbol{ true, ValueCategory::Rvalue };
                 return;
             }
         }
         if constexpr (std::is_same_v<T, bool> || std::is_same_v<T, double>) {
             switch (op) {
             case OpCode::NOT:
-                result.assign(!static_cast<bool>(arg));
+                result = Symbol{ !static_cast<bool>(arg), ValueCategory::Rvalue };
                 return;
             case OpCode::UNM:
-                result.assign(-static_cast<double>(arg));
+                result = Symbol{ -static_cast<double>(arg), ValueCategory::Rvalue };
                 return;
             default:
                 return;
@@ -158,23 +166,23 @@ app::Symbol app::Symbol::operationBinaryMath(const Symbol& symbol, const OpCode 
 
         if constexpr (std::is_same_v<Tl, std::string> || std::is_same_v<Tr, std::string>) {
             if (op == OpCode::ADD) {
-                result.assign(details::toString(argLeft) + details::toString(argRight));
+                result = Symbol{ details::toString(argLeft) + details::toString(argRight), ValueCategory::Rvalue };
                 return;
             }
         }
         if constexpr (details::is_any_of_v<Tl, bool, double> && details::is_any_of_v<Tr, bool, double>) {
             switch (op) {
             case OpCode::ADD:
-                result.assign(static_cast<double>(argLeft) + static_cast<double>(argRight));
+                result = Symbol{ static_cast<double>(argLeft) + static_cast<double>(argRight), ValueCategory::Rvalue };
                 return;
             case OpCode::SUB:
-                result.assign(static_cast<double>(argLeft) - static_cast<double>(argRight));
+                result = Symbol{ static_cast<double>(argLeft) - static_cast<double>(argRight), ValueCategory::Rvalue };
                 return;
             case OpCode::MUL:
-                result.assign(static_cast<double>(argLeft) * static_cast<double>(argRight));
+                result = Symbol{ static_cast<double>(argLeft) * static_cast<double>(argRight), ValueCategory::Rvalue };
                 return;
             case OpCode::DIV:
-                result.assign(static_cast<double>(argLeft) / static_cast<double>(argRight));
+                result = Symbol{ static_cast<double>(argLeft) / static_cast<double>(argRight), ValueCategory::Rvalue };
                 return;
             default:
                 return;
@@ -199,10 +207,10 @@ app::Symbol app::Symbol::operationLogic(const Symbol& symbol, const OpCode op) c
         if constexpr (details::is_any_of_v<Tl, bool, double> && details::is_any_of_v<Tr, bool, double>) {
             switch (op) {
             case OpCode::AND:
-                result.assign(argLeft && argRight);
+                result = Symbol{ argLeft && argRight, ValueCategory::Rvalue };
                 return;
             case OpCode::OR:
-                result.assign(argLeft || argRight);
+                result = Symbol{ argLeft || argRight, ValueCategory::Rvalue };
                 return;
             default:
                 return;
@@ -229,12 +237,12 @@ app::Symbol app::Symbol::operationCompare(const Symbol& symbol, const OpCode op)
             case OpCode::EQ:
             case OpCode::LE:
             case OpCode::GE:
-                result.assign(true);
+                result = Symbol{ true, ValueCategory::Rvalue };
                 return;
             case OpCode::NEQ:
             case OpCode::LT:
             case OpCode::GT:
-                result.assign(false);
+                result = Symbol{ false, ValueCategory::Rvalue };
                 return;
             default:
                 return;
@@ -242,11 +250,11 @@ app::Symbol app::Symbol::operationCompare(const Symbol& symbol, const OpCode op)
         }
         else if constexpr (std::is_same_v<Tl, std::nullopt_t> || std::is_same_v<Tr, std::nullopt_t>) {
             if (op == OpCode::EQ) {
-                result.assign(false);
+                result = Symbol{ false, ValueCategory::Rvalue };
                 return;
             }
             if (op == OpCode::NEQ) {
-                result.assign(true);
+                result = Symbol{ true, ValueCategory::Rvalue };
                 return;
             }
         }
@@ -255,11 +263,11 @@ app::Symbol app::Symbol::operationCompare(const Symbol& symbol, const OpCode op)
         {
             if constexpr (std::is_same_v<Tl, bool> && std::is_same_v<Tr, bool>) {
                 if (op == OpCode::EQ) {
-                    result.assign(argLeft == argRight);
+                    result = Symbol{ argLeft == argRight, ValueCategory::Rvalue };
                     return;
                 }
                 if (op == OpCode::NEQ) {
-                    result.assign(argLeft != argRight);
+                    result = Symbol{ argLeft != argRight, ValueCategory::Rvalue };
                     return;
                 }
             }
@@ -269,22 +277,22 @@ app::Symbol app::Symbol::operationCompare(const Symbol& symbol, const OpCode op)
 
             switch (op) {
             case OpCode::EQ:
-                result.assign(static_cast<LType>(argLeft) == static_cast<RType>(argRight));
+                result = Symbol{ static_cast<LType>(argLeft) == static_cast<RType>(argRight), ValueCategory::Rvalue };
                 return;
             case OpCode::NEQ:
-                result.assign(static_cast<LType>(argLeft) != static_cast<RType>(argRight));
+                result = Symbol{ static_cast<LType>(argLeft) != static_cast<RType>(argRight), ValueCategory::Rvalue };
                 return;
             case OpCode::LT:
-                result.assign(static_cast<LType>(argLeft) < static_cast<RType>(argRight));
+                result = Symbol{ static_cast<LType>(argLeft) < static_cast<RType>(argRight), ValueCategory::Rvalue };
                 return;
             case OpCode::LE:
-                result.assign(static_cast<LType>(argLeft) <= static_cast<RType>(argRight));
+                result = Symbol{ static_cast<LType>(argLeft) <= static_cast<RType>(argRight), ValueCategory::Rvalue };
                 return;
             case OpCode::GT:
-                result.assign(static_cast<LType>(argLeft) > static_cast<RType>(argRight));
+                result = Symbol{ static_cast<LType>(argLeft) > static_cast<RType>(argRight), ValueCategory::Rvalue };
                 return;
             case OpCode::GE:
-                result.assign(static_cast<LType>(argLeft) >= static_cast<RType>(argRight));
+                result = Symbol{ static_cast<LType>(argLeft) >= static_cast<RType>(argRight), ValueCategory::Rvalue };
                 return;
             default:
                 return;
@@ -300,9 +308,6 @@ app::Symbol app::Symbol::operationCompare(const Symbol& symbol, const OpCode op)
 void app::Symbol::print() const
 {
     visit([](auto && arg) {
-        using T = std::decay_t<decltype(arg)>;
-        constexpr auto isString = std::is_same_v<T, std::string>;
-
         printf("%s", details::toString(arg).c_str());
     });
 }

@@ -14,10 +14,29 @@ std::vector<app::ByteCodeItem> app::CommandBuffer::generate()
             constexpr auto isTask = std::is_same_v<T, Task>;
             constexpr auto isNode = std::is_same_v<T, SyntaxNode*>;
 
-            if constexpr (isTask || isNode) {
-                m_currentPosition = it;
-                ++m_currentPosition;
+            if constexpr (std::is_same_v<T, ByteCodeItem>) {
+                std::visit([this](auto && arg) {
+                    using T = std::decay_t<decltype(arg)>;
 
+                    if constexpr (std::is_same_v<T, OpCode>) {
+                        if (arg == OpCode::DEFBLOCK) {
+                            ++m_currentBlock;
+                        }
+                        else if (arg == OpCode::DELBLOCK) {
+                            if (m_currentBlock == 0) {
+                                throw std::runtime_error{ "DELBLOCK error" };
+                            }
+                            --m_currentBlock;
+                        }
+                    }
+                }, arg);
+            }
+
+            if constexpr (isTask || isNode) {
+                m_localIterator = it;
+                ++m_localIterator;
+
+                m_applyLocalIterator = false;
                 if constexpr (isTask) {
                     arg(*this);
                 }
@@ -26,6 +45,9 @@ std::vector<app::ByteCodeItem> app::CommandBuffer::generate()
                 }
 
                 it = m_commands.erase(it);
+                if (m_applyLocalIterator) {
+                    it = m_localIterator;
+                }
             }
             else {
                 ++it;
@@ -84,40 +106,43 @@ std::vector<app::ByteCodeItem> app::CommandBuffer::generate()
 
 void app::CommandBuffer::translate(Task task)
 {
-    m_commands.insert(m_currentPosition, task);
+    m_commands.insert(m_localIterator, task);
 }
 
 void app::CommandBuffer::translate(SyntaxNode& task)
 {
-    m_commands.insert(m_currentPosition, &task);
+    m_commands.insert(m_localIterator, &task);
 }
 
 void app::CommandBuffer::requestPosition(const size_t index)
 {
-    m_commands.insert(m_currentPosition, PointerRequest{ index });
+    m_commands.insert(m_localIterator, PointerRequest{ index });
 }
 
 void app::CommandBuffer::replyPosition(const size_t index)
 {
-    m_commands.insert(m_currentPosition, PointerReply{ index });
+    m_commands.insert(m_localIterator, PointerReply{ index });
 }
 
 void app::CommandBuffer::push(const ByteCodeItem& item)
 {
-    m_commands.insert(m_currentPosition, item);
+    m_commands.insert(m_localIterator, item);
 }
 
 void app::CommandBuffer::pushLoopBounds(size_t startPointerIndex, size_t endPointerIndex)
 {
     m_loopBounds.emplace(startPointerIndex, endPointerIndex);
+    m_scopeBlocks.emplace(m_currentBlock);
 }
 
-size_t app::CommandBuffer::getLoopStartPointerIndex() const {
+size_t app::CommandBuffer::getLoopStartPointerIndex() const
+{
     assert(!m_loopBounds.empty());
     return m_loopBounds.top().first;
 }
 
-size_t app::CommandBuffer::getLoopEndPointerIndex() const {
+size_t app::CommandBuffer::getLoopEndPointerIndex() const
+{
     assert(!m_loopBounds.empty());
     return m_loopBounds.top().second;
 }
@@ -126,6 +151,20 @@ void app::CommandBuffer::popLoopBounds()
 {
     assert(!m_loopBounds.empty());
     m_loopBounds.pop();
+    m_scopeBlocks.pop();
+}
+
+void app::CommandBuffer::clearBlocks()
+{
+    assert(!m_scopeBounds.empty());
+
+    auto block = m_currentBlock;
+    while (block > m_scopeBlocks.top()) {
+        m_commands.insert(m_localIterator, OpCode::DELBLOCK);
+        --block;
+    }
+
+    m_applyLocalIterator = true;
 }
 
 size_t app::CommandBuffer::createPositionIndex() {
