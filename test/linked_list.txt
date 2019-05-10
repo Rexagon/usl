@@ -112,6 +112,8 @@ linked_list_erase(test_list.get_next());
 
 linked_list_print(test_list);
 
+std.println(std.Math.sin(10));
+
 std.println("Enter searched string. Or 'exit'");
 while(true) {
     std.print("> ");

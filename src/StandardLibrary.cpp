@@ -52,6 +52,89 @@ namespace app::standard_objects
         Symbol m_prev{ Symbol::ValueCategory::Lvalue };
     };
 
+    class Math final : public CoreObject
+    {
+    public:
+        Math()
+        {
+            const auto createUnaryMathOperation = [](auto && op) {
+                return [&op](Evaluator & evaluator) {
+                    const auto arg = evaluator.popFunctionArgument().unref();
+
+                    auto result = 0.0;
+                    arg.visit([&op, &result](auto && arg) {
+                        using T = std::decay_t<decltype(arg)>;
+
+                        if constexpr (details::is_any_of_v<T, bool, double>) {
+                            result = op(arg);
+                        }
+                        else {
+                            throw std::runtime_error{ "Wrong argument type" };
+                        }
+                    });
+
+                    evaluator.push(Symbol{ result, Symbol::ValueCategory::Rvalue });
+                };
+            };
+
+            const auto createBinaryMathOperation = [](auto&& op) {
+                return [&op](Evaluator & evaluator) {
+                    const auto argLeft = evaluator.popFunctionArgument().unref();
+                    const auto argRight = evaluator.popFunctionArgument().unref();
+
+                    auto result = 0.0;
+                    argLeft.visit([&op, &result, &argRight](auto && argLeft) {
+                        argRight.visit([&op, &result, &argLeft](auto && argRight) {
+                            using Tl = std::decay_t<decltype(argLeft)>;
+                            using Tr = std::decay_t<decltype(argRight)>;
+
+                            if constexpr (
+                                details::is_any_of_v<Tl, bool, double> &&
+                                details::is_any_of_v<Tr, bool, double>)
+                            {
+                                result = op(static_cast<double>(argLeft), static_cast<double>(argRight));
+                            }
+                            else {
+                                throw std::runtime_error{ "Wrong argument type" };
+                            }
+                        });
+                    });
+
+                    evaluator.push(Symbol{ result, Symbol::ValueCategory::Rvalue });
+                };
+            };
+
+            const std::unordered_map<std::string_view, double(*)(double)> unaryFunctions = {
+                {"abs", std::fabs},
+                {"sqrt", std::sqrt},
+                {"sin", std::sin},
+                {"asin", std::asin},
+                {"cos", std::cos},
+                {"acos", std::acos},
+                {"tan", std::tan},
+                {"atan", std::atan},
+                {"ceil", std::ceil},        // nearest integer not less than the given v
+                {"floor", std::floor},      // nearest integer not greater than the given value
+                {"trunc", std::trunc},      // nearest integer not greater in magnitude than the given value 
+                {"round", std::round},      // nearest integer, rounding away from zero in halfway cases 
+            };
+
+            for (const auto&[name, function] : unaryFunctions) {
+                registerMember(name, std::make_shared<SimpleCoreFunction>(createUnaryMathOperation(function)));
+            }
+
+            const std::unordered_map<std::string_view, double(*)(double, double)> binaryFunctions = {
+                {"mod", std::fmod},
+                {"min", std::fmin},
+                {"max", std::fmax},
+            };
+
+            for (const auto& [name, function] : binaryFunctions) {
+                registerMember(name, std::make_shared<SimpleCoreFunction>(createBinaryMathOperation(function)));
+            }
+        }
+    };
+
     class Pair final : public CoreObject
     {
     public:
@@ -84,6 +167,8 @@ app::StandardLibrary::StandardLibrary()
 
         evaluator.push(Symbol{ input, Symbol::ValueCategory::Rvalue });
     }));
+
+    registerMember("Math", std::make_shared<standard_objects::Math>());
 
     registerMember("LinkedListNode", std::make_shared<standard_objects::LinkedListNode>());
     registerMember("Pair", std::make_shared<standard_objects::Pair>());
