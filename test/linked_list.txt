@@ -53,25 +53,28 @@ function linked_list_set(node, index, value) {
     }
 }
 
-function linked_list_insert_after(node, value) {
-    if (node == null) {
-        return;
-    }
-
+function linked_list_insert(ref node, value) {
     let new_node = std.LinkedListNode.new();
     new_node.value = value;
 
-    let next_value = node.get_next();
-    if (next_value != null) {
-        new_node.set_next(next_value);
-        next_value.set_prev(new_node);
+    if (node == null) {
+        node = new_node;
+        return;
     }
 
-    node.set_next(new_node);
-    new_node.set_prev(node);
+    let prev_node = node.get_prev();
+    if (prev_node!= null) {
+        prev_node.set_next(new_node);
+        new_node.set_prev(prev_node);
+    }
+
+    node.set_prev(new_node);
+    new_node.set_next(node);
+
+    node = new_node;
 }
 
-function linked_list_erase(node) {
+function linked_list_erase(ref node) {
     if (node == null) {
         return;
     }
@@ -100,19 +103,38 @@ function linked_list_find(node, value, ref result_node) {
     result_node = null;
 }
 
-let test_list = std.LinkedListNode.new();
-test_list.value = "Hello";
+let test_list;
 
-linked_list_insert_after(test_list, "One");
-linked_list_insert_after(test_list.get_next(), "Two");
-linked_list_insert_after(test_list.get_next().get_next(), "Three");
-linked_list_insert_after(test_list.get_next().get_next().get_next(), "Four");
-
-linked_list_erase(test_list.get_next());
+linked_list_insert(test_list, "One");
+linked_list_insert(test_list, "Two");
+linked_list_insert(test_list, "Three");
+linked_list_insert(test_list, "Four");
 
 linked_list_print(test_list);
 
-std.println(std.Math.sin(10));
+function map_create(ref map, bucket_count) {
+    map = std.Tuple.new("element_count", "bucket_count", "buckets");
+    map.element_count = 0;
+    map.bucket_count = bucket_count;
+    for (let i = 0; i < bucket_count; i = i + 1) {
+        linked_list_insert(map.buckets, null);
+    }
+}
+
+function map_insert(ref map, key) {
+     let hash = std.hash(key, map.bucket_count);
+     let bucket = linked_list_get_node(map.buckets, hash).value;
+
+     let found;
+     linked_list_find(bucket, key, found);
+}
+
+let map;
+map_create(map, 10);
+
+map_insert(map, "test");
+
+linked_list_print(map.buckets);
 
 std.println("Enter searched string. Or 'exit'");
 while(true) {

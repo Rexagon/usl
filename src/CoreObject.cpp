@@ -1,6 +1,6 @@
 #include "CoreObject.hpp"
 
-app::Symbol app::CoreObject::getMember(const std::string_view name)
+app::Symbol app::CoreObject::getMember(const std::string& name)
 {
     auto it = m_members.find(name);
     if (it == m_members.end()) {

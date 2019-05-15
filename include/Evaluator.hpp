@@ -31,6 +31,8 @@ namespace app
         bool hasVariable(std::string_view name) const;
 
         Symbol popFunctionArgument();
+        bool hasFunctionArguments() const;
+        size_t getFunctionArgumentCount() const;
 
     private:
         void handleDecl(OpCode op);

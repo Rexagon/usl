@@ -156,6 +156,16 @@ app::Symbol app::Evaluator::popFunctionArgument()
     return argument;
 }
 
+bool app::Evaluator::hasFunctionArguments() const
+{
+    return !m_argumentsStack.empty();
+}
+
+size_t app::Evaluator::getFunctionArgumentCount() const
+{
+    return m_argumentsStack.size();
+}
+
 void app::Evaluator::handleDecl(const OpCode op)
 {
     if (m_stack.empty()) {
@@ -264,7 +274,8 @@ void app::Evaluator::handleStructRef()
                 }
 
                 //TODO: check original core object lifetime after assignment
-                auto member = arg->getMember(std::get<std::string_view>(memberName));
+                const auto name = std::string{ std::get<std::string_view>(memberName) };
+                auto member = arg->getMember(name);
                 m_stack.emplace_back(member);
             }
             else {

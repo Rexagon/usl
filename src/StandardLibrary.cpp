@@ -4,6 +4,41 @@
 
 #include <iostream>
 
+namespace app::standard_functions
+{
+    class HashingFunction final : public CoreFunction
+    {
+    public:
+        void call(Evaluator& evaluator) override
+        {
+            const auto value = evaluator.popFunctionArgument().unref();
+            const auto modulus = evaluator.popFunctionArgument().unref();
+
+            size_t hash = 0;
+            value.visit([&hash](auto && arg) {
+                using T = std::decay_t<decltype(arg)>;
+
+                if constexpr (details::is_any_of_v<T, bool, double, std::string>) {
+                    hash = std::hash<T>{}(arg);
+                }
+                else {
+                    throw std::runtime_error{ "Wrong argument type" };
+                }
+            });
+
+            modulus.visit([&hash](auto && arg) {
+                using T = std::decay_t<decltype(arg)>;
+
+                if constexpr (std::is_same_v<T, double>) {
+                    hash %= static_cast<size_t>(std::round(arg));
+                }
+            });
+
+            evaluator.push(Symbol{ static_cast<double>(hash), Symbol::ValueCategory::Rvalue });
+        }
+    };
+}
+
 namespace app::standard_objects
 {
     class LinkedListNode final : public CoreObject
@@ -104,7 +139,7 @@ namespace app::standard_objects
                 };
             };
 
-            const std::unordered_map<std::string_view, double(*)(double)> unaryFunctions = {
+            const std::unordered_map<std::string, double(*)(double)> unaryFunctions = {
                 {"abs", std::fabs},
                 {"sqrt", std::sqrt},
                 {"sin", std::sin},
@@ -123,7 +158,7 @@ namespace app::standard_objects
                 registerMember(name, std::make_shared<SimpleCoreFunction>(createUnaryMathOperation(function)));
             }
 
-            const std::unordered_map<std::string_view, double(*)(double, double)> binaryFunctions = {
+            const std::unordered_map<std::string, double(*)(double, double)> binaryFunctions = {
                 {"mod", std::fmod},
                 {"min", std::fmin},
                 {"max", std::fmax},
@@ -148,6 +183,33 @@ namespace app::standard_objects
             registerMember("second", std::nullopt);
         }
     };
+
+    class Tuple final : public CoreObject
+    {
+    public:
+        Tuple()
+        {
+            registerMember("new", std::make_shared<SimpleCoreFunction>([](Evaluator & evaluator) {
+                auto result = std::make_shared<Tuple>();
+
+                while (evaluator.hasFunctionArguments()) {
+                    evaluator.popFunctionArgument().unref().visit([&result](auto && arg) {
+                        using T = std::decay_t<decltype(arg)>;
+
+                        if constexpr (std::is_same_v<T, std::string>) {
+                            printf("Argument: %s\n", arg.c_str());
+                            result->registerMember(arg, std::nullopt);
+                        }
+                        else {
+                            throw std::runtime_error{ "Wrong argument type" };
+                        }
+                    });
+                }
+
+                evaluator.push(Symbol{ result, Symbol::ValueCategory::Rvalue });
+            }));
+        }
+    };
 }
 
 app::StandardLibrary::StandardLibrary()
@@ -168,8 +230,11 @@ app::StandardLibrary::StandardLibrary()
         evaluator.push(Symbol{ input, Symbol::ValueCategory::Rvalue });
     }));
 
+    registerMember("hash", std::make_shared<standard_functions::HashingFunction>());
+
     registerMember("Math", std::make_shared<standard_objects::Math>());
 
     registerMember("LinkedListNode", std::make_shared<standard_objects::LinkedListNode>());
     registerMember("Pair", std::make_shared<standard_objects::Pair>());
+    registerMember("Tuple", std::make_shared<standard_objects::Tuple>());
 }
