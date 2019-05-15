@@ -197,7 +197,6 @@ namespace app::standard_objects
                         using T = std::decay_t<decltype(arg)>;
 
                         if constexpr (std::is_same_v<T, std::string>) {
-                            printf("Argument: %s\n", arg.c_str());
                             result->registerMember(arg, std::nullopt);
                         }
                         else {

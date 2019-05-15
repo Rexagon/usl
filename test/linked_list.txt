@@ -103,40 +103,90 @@ function linked_list_find(node, value, ref result_node) {
     result_node = null;
 }
 
-let test_list;
-
-linked_list_insert(test_list, "One");
-linked_list_insert(test_list, "Two");
-linked_list_insert(test_list, "Three");
-linked_list_insert(test_list, "Four");
-
-linked_list_print(test_list);
-
-function map_create(ref map, bucket_count) {
-    map = std.Tuple.new("element_count", "bucket_count", "buckets");
-    map.element_count = 0;
-    map.bucket_count = bucket_count;
+function set_create(ref set, bucket_count) {
+    set = std.Tuple.new("element_count", "bucket_count", "buckets");
+    set.element_count = 0;
+    set.bucket_count = bucket_count;
     for (let i = 0; i < bucket_count; i = i + 1) {
-        linked_list_insert(map.buckets, null);
+        linked_list_insert(set.buckets, null);
     }
 }
 
-function map_insert(ref map, key) {
-     let hash = std.hash(key, map.bucket_count);
-     let bucket = linked_list_get_node(map.buckets, hash).value;
+function set_rehash(ref set) {
+    let new_set;
+    set_create(new_set, set.bucket_count * 2);
+    new_set.element_count = set.element_count;
+    for (let i = 0; i < new_set.bucket_count; i = i + 1) {
+        linked_list_insert(new_set.buckets, null);
+    }
 
-     let found;
-     linked_list_find(bucket, key, found);
+    let bucket = set.buckets;
+    while (bucket != null) {
+        let node = bucket.value;
+        while (node != null) {
+            let hash = std.hash(node.value, new_set.bucket_count);
+            let bucket_node = linked_list_get_node(new_set.buckets, hash);
+            linked_list_insert(bucket_node.value, node.value);
+
+            node = node.get_next();
+        }
+        bucket = bucket.get_next();
+    }
+
+    set = new_set;
 }
 
-let map;
-map_create(map, 10);
+function set_insert(ref set, key) {
+    let load_factor = set.element_count / set.bucket_count;
+    if (load_factor > 0.5) {
+        set_rehash(set);
+    }
 
-map_insert(map, "test");
+    let hash = std.hash(key, set.bucket_count);
 
-linked_list_print(map.buckets);
+    let bucket_node = linked_list_get_node(set.buckets, hash);
 
-std.println("Enter searched string. Or 'exit'");
+    let found;
+    linked_list_find(bucket_node.value, key, found);
+
+    if (found == null) {
+        set.element_count = set.element_count + 1;
+        linked_list_insert(bucket_node.value, key);
+    }
+}
+
+function set_contains(ref set, key) {
+    let hash = std.hash(key, set.bucket_count);
+
+    let bucket_node = linked_list_get_node(set.buckets, hash);
+
+    let found;
+    linked_list_find(bucket_node.value, key, found);
+
+    return found != null;
+}
+
+function set_erase(ref set, key) {
+    let hash = std.hash(key, set.bucket_count);
+    let bucket_node = linked_list_get_node(set.buckets, hash);
+    
+    let found;
+    linked_list_find(bucket_node.value, key, found);
+
+    if (found != null && bucket_node.value != null) {
+        if (bucket_node.value.value == found.value) {
+            linked_list_erase(bucket_node);
+            return;
+        }
+    }
+
+    linked_list_erase(found);
+}
+
+let set;
+set_create(set, 10);
+
+std.println("i - insert, f - find, e - erase, o - output, exit - stop application");
 while(true) {
     std.print("> ");
     let input = std.readln();
@@ -144,14 +194,36 @@ while(true) {
     if (input == "exit") {
         break;
     }
+    if (input == "i") {
+        std.print("ins> ");
+        let input = std.readln();
 
-    let result;
-    linked_list_find(test_list, input, result);
-
-    if (result != null) {
-        std.println("Yes. List contains '" + result.value + "'");
+        set_insert(set, input);
+        continue;
     }
-    else {
-        std.println("Not found");
+    if (input == "f") {
+        std.print("fnd> ");
+        let input = std.readln();
+        std.println(set_contains(set, input));
+
+        continue;
+    }
+    if (input == "e") {
+        std.print("ers> ");
+        let input = std.readln();
+        set_erase(set, input);
+        continue;
+    }
+    if (input == "o") {
+        let i = 0;
+        let root = set.buckets;
+        while (root != null) {
+            std.print("Bucket #" + i + ": ");
+            linked_list_print(root.value);
+
+            i = i + 1;
+            root = root.get_next();
+        }
+        continue;
     }
 }
