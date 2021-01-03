@@ -1,0 +1,11 @@
+[package]
+name = "usl"
+version = "0.1.0"
+authors = ["Ivan Kalinin <i.kalinin@dexpa.io>"]
+edition = "2018"
+
+[lib]
+name = "usl"
+src = "src/lib.rs"
+
+[dependencies]
