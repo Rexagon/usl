@@ -1,5 +1,5 @@
-use std::str::Chars;
 use std::ops::Range;
+use std::str::Chars;
 
 #[derive(Debug)]
 pub struct Token {
@@ -99,7 +99,7 @@ pub fn first_token(input: &str) -> Token {
     Cursor::new(input).advance_token()
 }
 
-pub fn tokenize(mut input: &str) -> impl Iterator<Item=Token> + '_ {
+pub fn tokenize(mut input: &str) -> impl Iterator<Item = Token> + '_ {
     std::iter::from_fn(move || {
         if input.is_empty() {
             return None;
@@ -111,19 +111,19 @@ pub fn tokenize(mut input: &str) -> impl Iterator<Item=Token> + '_ {
 }
 
 pub fn is_whitespace(c: char) -> bool {
-    matches! {
-        c,
-        ' ' | // simple space
-        '\t' | // tab
-        '\n' | // new line
-        '\r' | // caret return
-        '\u{000B}' | // vertical tab
-        '\u{000C}' | // form feed
-        '\u{0085}' | // new line from latin1
-        '\u{200E}' | // left-to-right mark
-        '\u{200F}' | // right-to-left mark
-        '\u{2028}' | // line separator
-        '\u{2029}' // paragraph separator
+    match c {
+        ' ' // simple space 
+        | '\t' // tab
+        | '\n' // new line
+        | '\r' // caret return
+        | '\u{000B}' // vertical tab
+        | '\u{000C}' // form feed
+        | '\u{0085}' // new line from latin1
+        | '\u{200E}' // left-to-right mark
+        | '\u{200F}' // right-to-left mark
+        | '\u{2028}' // line separator
+        | '\u{2029}' => true, // paragraph separator
+        _ => false
     }
 }
 
@@ -303,7 +303,7 @@ impl<'a> Cursor<'a> {
                 }
                 LiteralKind::Float { base }
             }
-            _ => LiteralKind::Int { base, empty_int: false }
+            _ => LiteralKind::Int { base, empty_int: false },
         }
     }
 
@@ -378,7 +378,7 @@ impl<'a> Cursor<'a> {
                     has_digits = true;
                     self.bump();
                 }
-                _ => break
+                _ => break,
             }
         }
         has_digits
@@ -468,7 +468,8 @@ impl UnescapeMode {
 }
 
 pub fn unescape_literal<F>(literal_text: &str, mode: UnescapeMode, callback: &mut F)
-    where F: FnMut(Range<usize>, Result<char, EscapeError>)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
     match mode {
         UnescapeMode::Char => {
@@ -476,7 +477,7 @@ pub fn unescape_literal<F>(literal_text: &str, mode: UnescapeMode, callback: &mu
             let result = unescape_char(&mut chars);
             callback(0..(literal_text.len() - chars.as_str().len()), result);
         }
-        UnescapeMode::Str => unescape_str(literal_text, mode, callback)
+        UnescapeMode::Str => unescape_str(literal_text, mode, callback),
     }
 }
 
@@ -490,11 +491,15 @@ pub fn unescape_char(chars: &mut Chars<'_>) -> Result<char, EscapeError> {
 }
 
 pub fn unescape_str<F>(src: &str, mode: UnescapeMode, callback: &mut F)
-    where F: FnMut(Range<usize>, Result<char, EscapeError>)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
     fn skip_ascii_whitespace(chars: &mut Chars<'_>) {
         let s = chars.as_str();
-        let first_non_space = s.bytes().position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r').unwrap_or(s.len());
+        let first_non_space = s
+            .bytes()
+            .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
+            .unwrap_or(s.len());
         *chars = s[first_non_space..].chars();
     }
 
@@ -511,7 +516,7 @@ pub fn unescape_str<F>(src: &str, mode: UnescapeMode, callback: &mut F)
                         skip_ascii_whitespace(&mut chars);
                         continue;
                     }
-                    _ => scan_escape(first_char, &mut chars, mode)
+                    _ => scan_escape(first_char, &mut chars, mode),
                 }
             }
             '\n' => Ok('\n'),
@@ -530,7 +535,7 @@ fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: UnescapeMode) -> R
             '\r' => Err(EscapeError::BareCarriageReturn),
             '\'' if mode.in_single_quotes() => Err(EscapeError::EscapeOnlyChar),
             '"' if mode.in_double_quotes() => Err(EscapeError::EscapeOnlyChar),
-            _ => Ok(first_char)
+            _ => Ok(first_char),
         };
     }
 
@@ -544,7 +549,7 @@ fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: UnescapeMode) -> R
         '\\' => '\\',
         '\'' => '\'',
         '0' => '\0',
-        _ => return Err(EscapeError::InvalidEscape)
+        _ => return Err(EscapeError::InvalidEscape),
     };
     Ok(res)
 }
